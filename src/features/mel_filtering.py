@@ -5,7 +5,6 @@ TODO
 from librosa import filters, core
 import numpy as np
 import soundfile as sf
-import matplotlib.pyplot as plt
 
 
 def scaled_mel_filterbank(sample_rate, n_fft, n_mels, fmin, fmax):
@@ -13,7 +12,7 @@ def scaled_mel_filterbank(sample_rate, n_fft, n_mels, fmin, fmax):
         Determines the matrix for a Mel-filterbank and scales it for each
         filter values to sum up to 1.
         
-        :param sample_rate: Sample rate of the signal
+        :param sample_rate: sample rate of the signal
         :type sample_rate: int
 
         :param n_fft: number of FFT components
@@ -52,23 +51,24 @@ def scaled_mel_filterbank(sample_rate, n_fft, n_mels, fmin, fmax):
 def mel_process(audio_files, window_length=0.025, window_step=0.0125,
                 sample_rate=16000, use_spec_sub=False):
     """
-        Determines the matrix for a Mel-filterbank and scales it for each
-        filter values to sum up to 1.
+        Determines the energy and MFCCs of each signal.
         
-        :param audio_files: Sample rate of the signal
-        :type audio_files: int
+        :param audio_files: audio files to process
+        :type audio_files: list of str
 
-        :param window_length: number of FFT components
+        :param window_length: length of the sliding window as a fraction of 
+        the sample rate
         :type window_length: int
 
-        :param window_step: number of Mel bands to generate
+        :param window_step: step of the sliding window as a fraction of 
+        the sample rate
         :type window_step: int
 
-        :param sample_rate: lowest frequency as a fraction of sample rate
-        :type sample_rate: float
+        :param sample_rate: sample rate the audio files should have
+        :type sample_rate: int
 
-        :param use_spec_sub: highest frequency as a fraction of sample rate
-        :type use_spec_sub: The second number to add
+        :param use_spec_sub: use spectral subtraction or not
+        :type use_spec_sub: boolean
        
         :return: a tuple with:
             - F - list of MFCCs matrices per signal
@@ -87,7 +87,6 @@ def mel_process(audio_files, window_length=0.025, window_step=0.0125,
     
     i = 0
     while i < n_files:
-        
         f = audio_files[i]
         signal, f_sample_rate = sf.read(f)
         s_length = len(signal)
@@ -110,19 +109,24 @@ def mel_process(audio_files, window_length=0.025, window_step=0.0125,
         
         j = 0
         for i_start in range(0, s_length, window_step):
-            frames = signal[i_start : i_start + window_length] * window_hamming
-            fft_mag = np.abs(np.fft.rfft(frames))
-            mfcc = 20 * np.log10(np.matmul(mel, fft_mag))
+            frames = signal[i_start:i_start + window_length] * window_hamming
+            fft_magnitude = np.abs(np.fft.rfft(frames))
+            mfcc = 20 * np.log10(np.matmul(mel, fft_magnitude))
             
-            signal_mfcc[j,:] = mfcc
-            signal_energy[j] = sum(fft_mag)
+            signal_mfcc[j, :] = mfcc
+            signal_energy[j] = sum(fft_magnitude)
             j += 1
         
         F.append(signal_mfcc)
         E.append(signal_energy)
         
-        # include procbar
+        # add progress bar
+        # TODO
+        
         i += 1
         
     return F, E
     
+
+audio_files = ["../../data/sample_1.wav", "../../data/sample_2.wav"]
+F, E = mel_process(audio_files, window_step=0.01)
