@@ -48,7 +48,7 @@ def scaled_mel_filterbank(sample_rate, n_fft, n_mels, fmin, fmax):
     return mel_scaled
 
 
-def mel_process(audio_files, window_length=0.025, window_step=0.0125,
+def generate_features(audio_files, window_length=0.025, window_step=0.0125,
                 sample_rate=16000, use_spec_sub=False):
     """
         Determines the energy and MFCCs of each signal.
@@ -126,7 +126,3 @@ def mel_process(audio_files, window_length=0.025, window_step=0.0125,
         i += 1
         
     return F, E
-    
-
-audio_files = ["../../data/sample_1.wav", "../../data/sample_2.wav"]
-F, E = mel_process(audio_files, window_step=0.01)

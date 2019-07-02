@@ -8,8 +8,8 @@ import scipy.io
 
 def cut_features(features, model_params_file):
     """
-    Cut all file's features into portions of equal size that can be
-    processed by the BLSTM network.
+        Cut all file's features into portions of equal size that can be
+        processed by the BLSTM network.
     """
     
     # join every file's features matrix together in one matrix
@@ -41,7 +41,7 @@ def cut_features(features, model_params_file):
         tot_features = np.concatenate((tot_features,
                                        np.zeros((window_length-excess, 24))))
         features_ids = np.concatenate((features_ids,
-                                     np.full((window_length-excess), i-1)))
+                                       np.full((window_length-excess), i-1)))
         tot_length = len(tot_features)
     
     # slide window over total_features and add the result to X
@@ -63,5 +63,3 @@ def cut_features(features, model_params_file):
     # TODO
     
     return X, X_features_ids
-    
-X, X_ts = cut_features(F, "C:/Users/Médéric Carriat/Desktop/wce/models/LSTM_params_BLSTM_fourlang_60_60_augmented_dropout_v2.h5.mat")
