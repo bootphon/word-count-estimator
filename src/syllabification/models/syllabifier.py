@@ -3,10 +3,10 @@ TODO
 """
 
 import numpy as np
-from keras.models import load_model
 
 from keras.models import Model, Sequential, load_model
 from keras.layers import Input, Dense, LSTM, add
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 
 DEFAULT_MODEL="../models/BLSTM_fourlang_60_60_augmented_dropout_v2.h5"
@@ -50,9 +50,22 @@ class Syllabifier:
         except:
             print("Path to model is wrong.")
     
-    def train(self, X_train, y_train):
-        # TODO
-        print("Train")
+    def train(self, X_train, y_train, model_file="../models/curr_model.h5"):
+        new_shape = [y_train.shape[0], y_train.shape[1],1]
+        y_train = np.reshape(y_train, new_shape)
+        
+        earlyStopping = EarlyStopping(monitor='val_loss', min_delta=0.0001,
+                                      patience=15, verbose=0, mode='auto')
+        checkPoint = ModelCheckpoint("../models/curr_intermed.h5",
+                                     monitor='val_loss')
+        
+        self.model.fit(X_train, y_train, validation_data=(X_train, y_train),
+                       shuffle=True, epochs=15000,batch_size=250,
+                       callbacks=[earlyStopping, checkPoint],
+                       validation_split=0.1)
+        self.model.save(model_file)
+        print("Training finished successfully.")
+        print("Model saved at {}.".format(model_file))
         
     def predict(self, X):
         if len(self.model.layers[0].output_shape) > 3:
