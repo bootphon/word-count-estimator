@@ -16,14 +16,18 @@ def cut_features(features, model_params_file):
     tot_features = np.concatenate(features)
     tot_length = len(tot_features)
     
-    # features_ids keeps track of the number of the origin file of the features
-    features_ids = np.zeros(tot_length)
+    # timestamps keeps track of the number of the origin file of the features
+    # and the timestamps of the features
+    timestamps = np.zeros((tot_length, 2))
+    frames_length = np.zeros(len(features))
     file_id, l = 0, 0
     for f in features:
-        n_features = len(f)
-        features_ids[l:l+n_features] = [file_id]*n_features
+        frame_len = len(f)
+        frames_length[file_id] = frame_len
+        for i in range(l, l+frame_len):
+            timestamps[i] = (file_id, i-l)
         file_id += 1
-        l += n_features
+        l += frame_len
     
     model_params = scipy.io.loadmat(model_params_file)
     window_length = model_params['wl'][0][0]
@@ -40,8 +44,9 @@ def cut_features(features, model_params_file):
     if excess != 0:
         tot_features = np.concatenate((tot_features,
                                        np.zeros((window_length-excess, 24))))
-        features_ids = np.concatenate((features_ids,
-                                       np.full((window_length-excess), i-1)))
+        timestamps = np.concatenate((timestamps,
+                                       np.full((window_length-excess, 2),
+                                               (file_id-1, -1))))
         tot_length = len(tot_features)
     
     # slide window over total_features and add the result to X
@@ -49,10 +54,10 @@ def cut_features(features, model_params_file):
     
     k = 0
     X = np.zeros((n_slices, window_length, 24))
-    X_features_ids = np.zeros((n_slices, window_length))
-    for i_start in range(0, tot_length - window_length + window_step, window_step):
+    X_timestamps = np.zeros((n_slices, window_length, 2))
+    for i_start in range(0, tot_length-window_length+window_step, window_step):
         X[k, :, :] = tot_features[i_start:i_start + window_length, :]
-        X_features_ids[k, :] = features_ids[i_start:i_start+window_length]
+        X_timestamps[k, :] = timestamps[i_start:i_start+window_length, :]
         k += 1
     
     X[np.isneginf(X)] = 0
@@ -62,4 +67,4 @@ def cut_features(features, model_params_file):
     # divide into multiple files if needed
     # TODO
     
-    return X, X_features_ids
+    return X, X_timestamps, frames_length
