@@ -12,7 +12,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 DEFAULT_MODEL="../models/BLSTM_fourlang_60_60_augmented_dropout_v2.h5"
 
 
-class Syllabifier:
+class EnvelopeEstimator:
     
     def __init__(self):
         self.model = load_model(DEFAULT_MODEL)
