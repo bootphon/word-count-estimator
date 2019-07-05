@@ -13,6 +13,6 @@ model = Syllabifier()
 model.load_model_from_file("../models/BLSTM_fourlang_60_60_augmented_dropout_v2.h5")
 model.summary()
 env = model.predict(X)
-syl = gs.reconstruct_envelope(env, X_ts, fl)
+syl = gs.reconstruct_envelope(env, X_ts, fl, 300)
 
 plt.plot(syl[0])

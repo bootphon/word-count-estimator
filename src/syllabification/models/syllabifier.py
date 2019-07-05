@@ -72,9 +72,9 @@ class Syllabifier:
             new_shape = [X.shape[0], X.shape[1], X.shape[2], 1]
             X = np.reshape(X, new_shape)
         
-        envelopes = self.model.predict_on_batch(X)
-        if envelopes.ndim > 2:
-            envelopes = envelopes[:,:,0]
+        envelope_windows = self.model.predict_on_batch(X)
+        if envelope_windows.ndim > 2:
+            envelope_windows = envelope_windows[:,:,0]
         
         print("Prediction finished successfully.")
-        return envelopes
+        return envelope_windows
