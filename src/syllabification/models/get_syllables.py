@@ -3,6 +3,7 @@ TODO
 """
 
 import numpy as np
+from scipy.signal import find_peaks
 
 def reconstruct_envelope(envelope_windows, timestamps, frames_length, window_length):
     """
@@ -36,7 +37,11 @@ def reconstruct_envelope(envelope_windows, timestamps, frames_length, window_len
     return envelope
 
 
-def count_syllables():
-    # TODO
-    pass
+def count_syllables(envelope, threshold):
+    n_files = len(envelope)
+    n_syl_nuclei = np.zeros(n_files)
+    
+    for k in range(n_files):
+        n_syl_nuclei[k] = len(find_peaks(envelope[k], height=threshold)[0])
+    return n_syl_nuclei
 
