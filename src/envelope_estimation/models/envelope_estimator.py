@@ -9,7 +9,7 @@ from keras.layers import Input, Dense, LSTM, add
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 
-DEFAULT_MODEL="../models/BLSTM_fourlang_60_60_augmented_dropout_v2.h5"
+DEFAULT_MODEL="../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropout_v2.h5"
 
 
 class EnvelopeEstimator:

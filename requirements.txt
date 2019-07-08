@@ -2,3 +2,5 @@ librosa
 numpy
 soundfile
 scipy.io
+sklearn
+pickle
