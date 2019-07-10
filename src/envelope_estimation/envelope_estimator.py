@@ -43,7 +43,7 @@ class EnvelopeEstimator:
         self.model = model
         print("BLSTM model initialized successfully.")
         
-    def load_model_from_file(self, model_file):
+    def load_model(self, model_file):
         try:
             self.model = load_model(model_file)
             print("Model loaded successfully.")

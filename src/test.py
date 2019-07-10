@@ -11,6 +11,7 @@ from envelope_estimation import DataProcessing, EnvelopeEstimator
 from word_count_estimation import WordCountEstimator
 
 
+
 audio_files_train = glob.glob("../data/3/*.wav")
 audio_files_train.sort(key= lambda x: int(x.split("\\")[1][:-4]))
 print(audio_files_train)
@@ -18,7 +19,7 @@ dp = DataProcessing()
 X_train, timestamps, ori_frames_length = dp.generate_features_batches(audio_files_train)
 model = EnvelopeEstimator()
 #syl.initialize_BLSTM_model(X.shape[1:])
-model.load_model_from_file("../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropout_v2.h5")
+model.load_model("../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropout_v2.h5")
 model.summary()
 env_windows = model.predict(X_train)
 env = dp.reconstruct_envelopes(env_windows, timestamps, ori_frames_length)
@@ -40,6 +41,6 @@ thr = np.concatenate((np.linspace(0.0001, 0.0009, 9),
 wce = WordCountEstimator()
 train = np.array([84, 138, 91, 23, 217, 116, 96, 148, 47, 105, 141, 549, 224, 352, 258])
 wce.train(env, train, thr)
-wce.load_model_from_file("../models/word_count_estimator/curr_model.pickle")
+wce.load_model("../models/word_count_estimator/curr_model.pickle")
 n = wce.predict(env_t)
 n_tr = wce.predict(env)

@@ -1,35 +1,118 @@
-"""
-TODO
-"""
-
 import numpy as np
 import pickle
-from sklearn import linear_model
 import statsmodels.api as sm
 from math import sqrt
-
-from word_count_estimation.peakdetect import peakdet
-from word_count_estimation.add_features import add_features
+import sys
 
 
 class WordCountEstimator:
+    """
+    Model to estimate the word counts of audio files from their syllable
+    envelopes. 
     
-    def __init__(self):
-        self.threshold = 0.5
-        self.M = np.array([1])
-        self.alpha = 1
-        self.additional_features = []
+    Given a syllable envelope, the number of syllables nuclei are determined
+    using a peak picking algorithm. Then a linear mapping of the nuclei count
+    to the word count is made. 
+    Both the peak picking and linear mapping can be trained/adapted if the
+    number of words per files are provided.
+    
+    Attributes
+    ----------
+    threshold : float
+        Minimum value separating a maximum and its left neighbour for this 
+        maximum to be considered a peak.
+    M : float
+        Coefficients of the linear mapping between the nuclei counts and the
+        word counts.
+    alpha : float
+        Recall of the SAD to readjust M.
+    additional_features : list
+        List of features (str) to add to the estimated word count for the linear
+        mapping training.
+        
+    Methods
+    -------
+    summary()
+        Print a summary of the model.
+    load_model(model_file)
+        Load the model from a given file.
+    train(envelopes, target_word_counts, thresholds, model_file)
+        Train the model given syllable envelopes and their respective target
+        word counts. The resulting model is saved to model_file.
+    predict(envelopes)
+        Predicts the word counts for a given list of syllable envelopes.
+    """
+    
+    def __init__(self, threshold=0.5, M=np.array([1]), alpha=1, additional_features=[]):
+        """
+        Parameters
+        ----------
+        threshold : float
+            Minimum value separating a maximum and its left neighbour for this 
+            maximum to be considered a peak.
+        M : float
+            Coefficients of the linear mapping between the nuclei counts and the
+            word counts.
+        alpha : float
+            Recall of the SAD to readjust M.
+        additional_features : list
+            List of features (str) to add to the estimated word count for the linear
+            mapping training.
+        """
+        
+        self.threshold = threshold
+        self.M = M
+        self.alpha = alpha
+        self.additional_features = additional_features
         
     def summary(self):
-        print("model characteristics")
+        """
+        Print a summary of the model.
+        """
+        
+        for attr in self.__dict__:
+            print(attr, self.__dict__[attr])
     
-    def load_model_from_file(self, model_file): 
+    def load_model(self, model_file): 
+        """
+        Load the model from a given file.
+        
+        Parameters
+        ----------
+        model_file : str
+            Path to the model's file.
+        """
+        
         model = pickle.load(open(model_file, 'rb'))
         for attr in model:
             setattr(self, attr, model[attr])
     
     def train(self, envelopes, target_word_counts, thresholds,
               model_file="../models/word_count_estimator/curr_model.pickle"):
+        """
+        Train the model given syllable envelopes and their respective target
+        word counts. The resulting model is then saved to model_file. 
+        
+        Training works as follows:
+            - estimate the number of syllable nuclei per files according to
+            different thresholds and chose the threshold that induces the best
+            correlation between the estimated number of nuclei and the target
+            number of word counts.
+            - using the estimated number of nuclei resulting from the optimal
+            threshold, determine the coefficients of the linear mapping.
+        
+        Parameters
+        ----------
+        envelopes : ndarray
+            1D array of envelope per file.
+        target_word_counts : list
+            List of the word counts per file.
+        thresholds : list
+            List of the thresholds values to test for the model adaptation.
+        model_file: str
+            Path of the model file.
+            Defaults to "../models/word_count_estimator/curr_model.pickle".
+        """
         
         self.additional_features = ["duration",
                                     "sonority_mean_energy",
@@ -49,22 +132,18 @@ class WordCountEstimator:
             print(thresholds[j], estimated_nuclei_counts[:,j])
         
         # determine best threshold
-        # PROBLEM: corrcoef not the same
         corvals = np.zeros(n_thresholds)
         for k in range(n_thresholds):
             corvals[k] = np.corrcoef(target_word_counts,
                                      estimated_nuclei_counts[:, k],
                                      rowvar=False)[0][1]
-
-        print("corvals", corvals)
+        
         try:
             opti_k = np.nanargmax(corvals)
         except:
             opti_k = 0
         opti_threshold = thresholds[opti_k]
         nuclei_counts = estimated_nuclei_counts[:, opti_k]
-        
-        print("opti_counts", nuclei_counts)
         
         # create an array X from nuclei_counts and additional features
         X = np.zeros((n_files, 1 + len(self.additional_features)))
@@ -80,9 +159,6 @@ class WordCountEstimator:
 
         # readjust M by dividing by alpha: the recall of the SAD
         opti_M = opti_M / self.alpha
-        print('M', opti_M)
-        
-        print("M", opti_M)
         
         # compute RMSE
         estimated_word_counts = np.matmul(X, opti_M)
@@ -100,6 +176,19 @@ class WordCountEstimator:
         pickle.dump(model, open(model_file, 'wb'))
         
     def predict(self, envelopes):
+        """
+        Predicts the word counts for a given list of syllable envelopes.
+        
+        Parameters
+        ----------
+        envelopes : ndarray
+            1D array containing the audio files syllable envelopes.
+            
+        Returns
+        -------
+        word_counts : ndarray
+            1D array containing the word count per audio file/envelope.
+        """
         n_files = len(envelopes)
         
         X = np.zeros((n_files, 1 + len(self.additional_features)))
@@ -115,3 +204,115 @@ class WordCountEstimator:
         word_counts[word_counts == np.NaN] = 0
         
         return word_counts
+
+
+# Utility functions
+
+def peakdet(v, delta, x = None):
+    """
+    Peak picking algorithm.
+    
+    Converted from MATLAB script at http://billauer.co.il/peakdet.html by
+    https://github.com/endolith.
+    
+    Parameters
+    ----------
+    v : ndarray
+        1D array, input signal.
+    delta : float
+        Minimum value separating a maximum and its left neighbour for this 
+        maximum to be considered a peak.
+    x : ndarray
+        1D array, indices for mintab and maxtab.
+    
+    Returns
+    -------
+    maxtab : ndarray
+        1D array containing the indices of the maximum peaks.
+    mintab : ndarray
+        1D array containing the indices of the minimum peaks.
+    """
+    
+    maxtab = []
+    mintab = []
+       
+    if x is None:
+        x = np.arange(len(v))
+    
+    v = np.asarray(v)
+    
+    if len(v) != len(x):
+        sys.exit('Input vectors v and x must have same length')
+    
+    if not np.isscalar(delta):
+        sys.exit('Input argument delta must be a scalar')
+    
+    if delta <= 0:
+        sys.exit('Input argument delta must be positive')
+    
+    mn, mx = np.Inf, np.NINF
+    mnpos, mxpos = np.NaN, np.NaN
+    
+    lookformax = True
+    
+    for i in np.arange(len(v)):
+        this = v[i]
+        if this > mx:
+            mx = this
+            mxpos = x[i]
+        if this < mn:
+            mn = this
+            mnpos = x[i]
+        
+        if lookformax:
+            if this < mx-delta:
+                maxtab.append((mxpos, mx))
+                mn = this
+                mnpos = x[i]
+                lookformax = False
+        else:
+            if this > mn+delta:
+                mintab.append((mnpos, mn))
+                mx = this
+                mxpos = x[i]
+                lookformax = True
+
+    return np.array(maxtab), np.array(mintab)
+
+
+def add_features(envelope, wanted_features):
+    """
+    Compute the desired features from a syllable envelope.
+    
+    Parameters
+    ----------
+    envelope : ndarray
+        1D array containing the values of the syllable envelope.
+    wanted_features : list
+        String list of the desired features.
+        
+    Returns
+    -------
+    features : list
+        List of the computed features.
+    """
+    
+    features = []
+
+    if('duration' in wanted_features):
+        durs = len(envelope) / 100
+        features.append(durs)
+
+    if('sonority_total_energy' in wanted_features):
+        en_sonor_total = np.sum(envelope)
+        features.append(en_sonor_total)
+    
+    if('sonority_mean_energy' in wanted_features):
+        en_sonor_mean = np.mean(envelope)
+        features.append(en_sonor_mean)
+    
+    if('sonority_SD_energy' in wanted_features):
+        en_sonor_sd = np.std(envelope)
+        features.append(en_sonor_sd)
+    
+    return features

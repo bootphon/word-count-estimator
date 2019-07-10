@@ -13,9 +13,9 @@ class DataProcessing():
     
     Its purpose is to:
         - extract features from the input audio files and create batches from
-          those features.
+        those features.
         - once the batches have been processed by the syllable envelope
-          estimator, reconstruct the syllable envelope of each file.
+        estimator, reconstruct the syllable envelope of each file.
     
     Attributes
     ----------
