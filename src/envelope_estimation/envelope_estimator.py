@@ -1,10 +1,6 @@
-"""
-TODO
-"""
-
 import numpy as np
 
-from keras.models import Model, Sequential, load_model
+from keras.models import Model, load_model
 from keras.layers import Input, Dense, LSTM, add
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
@@ -13,14 +9,56 @@ DEFAULT_MODEL="../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropo
 
 
 class EnvelopeEstimator:
+    """
+    BLSTM model for syllable envelope estimation.
+    
+    The model takes sequences of 24 MFCCs as input.
+    The output of the BLSTM network is the activation of the output node for each
+    row of MFFCs presented to the network in the input sequence.
+
+    Remark: This model is not yet trainable as we do not have training data, hence the 
+    default model made by Okko Räsänen is always used.
+    
+    Attributes
+    ----------
+    model : Keras model
+        Keras object containing the parameters of the model.
+        
+    Methods
+    -------
+    summary()
+        Print a summary of the model.
+    initialize_BLSTM_model(X_shape)
+        Initialize a new untrained BLSTM model given an input shape.
+    load_model(model_file)
+        Load model from a file.
+    train(X_train, y_train, model_file)
+        Trains the model given the input 24 MFCCs sequences and their respective
+        targeted output syllable envelopes.
+    predict(X)
+        Predict the syllable envelopes on a batch of MFCCs sequences.
+    """
     
     def __init__(self):
         self.model = load_model(DEFAULT_MODEL)
         
     def summary(self):
+        """
+        Print a summary of the model.
+        """
+        
         self.model.summary()
         
     def initialize_BLSTM_model(self, X_shape):
+        """
+        Initialize a new untrained BLSTM model given an input shape.
+        
+        Parameters
+        ----------
+        X_shape : int tuple
+            Shape of the input data to adapt the input of the model.
+        """
+        
         sequence = Input(shape=X_shape)
 
         forwards1 = LSTM(units=60, return_sequences=True)(sequence)
@@ -44,6 +82,15 @@ class EnvelopeEstimator:
         print("BLSTM model initialized successfully.")
         
     def load_model(self, model_file):
+        """
+        Load model from a file.
+        
+        Parameters
+        ----------
+        model_file : str
+            Path to model file.
+        """
+        
         try:
             self.model = load_model(model_file)
             print("Model loaded successfully.")
@@ -51,6 +98,11 @@ class EnvelopeEstimator:
             print("Path to model is wrong.")
     
     def train(self, X_train, y_train, model_file="../models/curr_model.h5"):
+        """
+        Trains the model given the input 24 MFCCs sequences and their respective
+        targeted output syllable envelopes.
+        """
+        
         new_shape = [y_train.shape[0], y_train.shape[1],1]
         y_train = np.reshape(y_train, new_shape)
         
@@ -68,13 +120,17 @@ class EnvelopeEstimator:
         print("Model saved at {}.".format(model_file))
         
     def predict(self, X):
+        """
+        Predict the syllable envelopes on a batch of MFCCs sequences.
+        """
+        
         if len(self.model.layers[0].output_shape) > 3:
             new_shape = [X.shape[0], X.shape[1], X.shape[2], 1]
             X = np.reshape(X, new_shape)
         
-        envelope_windows = self.model.predict_on_batch(X)
-        if envelope_windows.ndim > 2:
-            envelope_windows = envelope_windows[:,:,0]
+        envelope_batch = self.model.predict_on_batch(X)
+        if envelope_batch.ndim > 2:
+            envelope_batch = envelope_batch[:,:,0]
 
-        print("Envelopes windows predicted successfully.")
-        return envelope_windows
+        print("Envelopes batches predicted successfully.")
+        return envelope_batches
