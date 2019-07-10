@@ -1,22 +1,33 @@
-import matplotlib.pyplot as plt
+"""
+Test file.
 
-from envelope_estimation.models.envelope_estimator import EnvelopeEstimator
-from envelope_estimation.models import reconstruct_envelope as re
-from envelope_estimation.features import generate_features as gf
-from envelope_estimation.features import cut_features as cf
-from word_count_estimation.word_count_estimator import WordCountEstimator
+"""
 
 import numpy as np
+import glob
+import matplotlib.pyplot as plt
 
-audio_files = ["../data/sample_1.wav", "../data/sample_2.wav"]
-F, E = gf.generate_features(audio_files, window_step=0.01)
-X, X_ts, fl = cf.cut_features(F, "C:/Users/Médéric Carriat/Desktop/wce/models/envelope_estimator/LSTM_params_BLSTM_fourlang_60_60_augmented_dropout_v2.h5.mat")
+from envelope_estimation import DataProcessing, EnvelopeEstimator
+from word_count_estimation import WordCountEstimator
+
+
+audio_files_train = glob.glob("../data/3/*.wav")
+audio_files_train.sort(key= lambda x: int(x.split("\\")[1][:-4]))
+print(audio_files_train)
+dp = DataProcessing()
+X_train, timestamps, ori_frames_length = dp.generate_features_batches(audio_files_train)
 model = EnvelopeEstimator()
 #syl.initialize_BLSTM_model(X.shape[1:])
 model.load_model_from_file("../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropout_v2.h5")
 model.summary()
-env_windows = model.predict(X)
-env = re.reconstruct_envelope(env_windows, X_ts, fl, 300)
+env_windows = model.predict(X_train)
+env = dp.reconstruct_envelopes(env_windows, timestamps, ori_frames_length)
+
+audio_files_test = ["../data/1.wav"]
+X_test, timestamps_t, ori_frames_length_t = dp.generate_features_batches(audio_files_test)
+env_windows_t = model.predict(X_test)
+env_t = dp.reconstruct_envelopes(env_windows_t, timestamps_t, ori_frames_length_t)
+
 
 thr = np.concatenate((np.linspace(0.0001, 0.0009, 9),
                       np.array([0.001]),
@@ -27,7 +38,8 @@ thr = np.concatenate((np.linspace(0.0001, 0.0009, 9),
 
 
 wce = WordCountEstimator()
-train = np.array([1, 4])
+train = np.array([84, 138, 91, 23, 217, 116, 96, 148, 47, 105, 141, 549, 224, 352, 258])
 wce.train(env, train, thr)
 wce.load_model_from_file("../models/word_count_estimator/curr_model.pickle")
-n = wce.predict(env)
+n = wce.predict(env_t)
+n_tr = wce.predict(env)

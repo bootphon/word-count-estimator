@@ -75,6 +75,6 @@ class EnvelopeEstimator:
         envelope_windows = self.model.predict_on_batch(X)
         if envelope_windows.ndim > 2:
             envelope_windows = envelope_windows[:,:,0]
-        
-        print("Prediction finished successfully.")
+
+        print("Envelopes windows predicted successfully.")
         return envelope_windows
