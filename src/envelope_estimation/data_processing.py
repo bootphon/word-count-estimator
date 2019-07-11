@@ -12,9 +12,9 @@ class DataProcessing():
     Class for data processing tasks.
     
     Its purpose is to:
-        - extract features from the input audio files and create batches from
+        - extract features from the input audio files and create batch from
         those features.
-        - once the batches have been processed by the syllable envelope
+        - once the batch have been processed by the syllable envelope
         estimator, reconstruct the syllable envelope of each file.
     
     Attributes
@@ -44,10 +44,10 @@ class DataProcessing():
         Save the data processing parameters to a given file.
     load_parameters(params_file)
         Load the data processing parameters from a given file.
-    generate_features_batches(self, audio_files)
-        Generate features batches from a list of audio files.
-    reconstruct_envelopes(envelopes_batches, timestamps, ori_frames_length)
-        Reconstruct the syllable envelope of each file from the result batches
+    generate_features_batch(self, audio_files)
+        Generate features batch from a list of audio files.
+    reconstruct_envelopes(envelopes_batch, timestamps, ori_frames_length)
+        Reconstruct the syllable envelope of each file from the result batch
         of the envelope estimator.
     """
     
@@ -108,9 +108,9 @@ class DataProcessing():
         for attr in params:
             setattr(self, attr, params[attr])
         
-    def generate_features_batches(self, audio_files):
+    def generate_features_batch(self, audio_files):
         """
-        Generate features batches from a list of audio files.
+        Generate features batch from a list of audio files.
         
         Parameters
         ----------
@@ -119,11 +119,11 @@ class DataProcessing():
             
         Returns
         -------
-        features_batches : ndarray
-            3D array of equally sized batches of features.
-        batches_timestamps : ndarray
+        features_batch : ndarray
+            3D array of equally sized batch of features.
+        batch_timestamps : ndarray
             3D array of the timestamps and frame numbers of each value in the
-            batches.
+            batch.
         ori_frames_length: ndarray
             1D array containing the lengths of the original features frames.
         """
@@ -132,24 +132,24 @@ class DataProcessing():
                                                    self.fgen_window_length,
                                                    self.fgen_window_step)[1]
         
-        features_batches, batches_timestamps, ori_frames_length = \
+        features_batch, batch_timestamps, ori_frames_length = \
             cut_features(features_frames, self.cut_window_length,
                          self.cut_window_step, self.meme, self.devi)
         
-        return features_batches, batches_timestamps, ori_frames_length
+        return features_batch, batch_timestamps, ori_frames_length
         
-    def reconstruct_envelopes(self, envelopes_batches, timestamps, ori_frames_length):
+    def reconstruct_envelopes(self, envelopes_batch, timestamps, ori_frames_length):
         """
-        Reconstruct the syllable envelope of each file from the result batches
+        Reconstruct the syllable envelope of each file from the result batch
         of the envelope estimator.
         
         Parameters
         ----------
-        features_batches : ndarray
-            3D array of equally sized batches of features.
+        features_batch : ndarray
+            3D array of equally sized batch of features.
         timestamps : ndarray
             3D array of the timestamps and frame numbers of each value in the
-            batches.
+            batch.
         ori_frames_length: ndarray
             1D array containing the lengths of the original features frames.
             
@@ -168,15 +168,15 @@ class DataProcessing():
            tot_sums.append(np.zeros(ori_frames_length[k]))
         
         # add (in envelopes) and count (in tot_sums) values in the envelopes
-        # batches which come from the same feature and batch
-        n_batches = envelopes_batches.shape[0]
-        for i in range(n_batches):
+        # batch which come from the same feature and batch
+        n_batch = envelopes_batch.shape[0]
+        for i in range(n_batch):
             batch_ts = timestamps[i,:,:]
             for j in range(self.cut_window_length):
                 frame_nb = batch_ts[j][0]
                 ts = batch_ts[j][1]
                 if ts > -1:
-                    envelopes[frame_nb][ts] += envelopes_batches[i][j]
+                    envelopes[frame_nb][ts] += envelopes_batch[i][j]
                     tot_sums[frame_nb][ts] += 1
         
         # compute the mean of values
@@ -309,9 +309,9 @@ def generate_features_frames(audio_files, window_length, window_step,
 
 def cut_features(features_frames, window_length, window_step, meme, devi):
     """
-    Cut the file's features frames into batches of equal size that can be
+    Cut the file's features frames into batch of equal size that can be
     processed by the BLSTM network. This is done because the BLSTM envelope
-    estimator needs the input batches to be equally sized.
+    estimator needs the input batch to be equally sized.
     The timestamps and original frames length are kept to reconstruct the 
     results of the BLSTM.
     
@@ -330,11 +330,11 @@ def cut_features(features_frames, window_length, window_step, meme, devi):
         
     Returns
     -------
-    features_batches : ndarray
-        3D array of equally sized batches of features.
+    features_batch : ndarray
+        3D array of equally sized batch of features.
     timestamps : ndarray
         3D array of the timestamps and frame numbers of each value in the
-        batches.
+        batch.
     ori_frames_length: ndarray
         1D array containing the lengths of the original features frames.
     """
@@ -371,20 +371,20 @@ def cut_features(features_frames, window_length, window_step, meme, devi):
                                                (frame_nb - 1, -1))))
         tot_length = len(tot_features)
     
-    # slide window over total_features and append it to features_batches at each step
-    n_batches = ((tot_length - window_length) // window_step) + 1
-    features_batches = np.zeros((n_batches, window_length, 24))
-    batches_timestamps = np.zeros((n_batches, window_length, 2), dtype=int)
+    # slide window over total_features and append it to features_batch at each step
+    n_batch = ((tot_length - window_length) // window_step) + 1
+    features_batch = np.zeros((n_batch, window_length, 24))
+    batch_timestamps = np.zeros((n_batch, window_length, 2), dtype=int)
     k = 0
     for i_start in range(0, tot_length - window_length + window_step, window_step):
-        features_batches[k, :, :] = tot_features[i_start:i_start + window_length, :]
-        batches_timestamps[k, :] = timestamps[i_start:i_start + window_length, :]
+        features_batch[k, :, :] = tot_features[i_start:i_start + window_length, :]
+        batch_timestamps[k, :] = timestamps[i_start:i_start + window_length, :]
         k += 1
     
-    features_batches[np.isneginf(features_batches)] = 0
-    features_batches[features_batches == np.inf] = 0
-    features_batches[features_batches == np.NaN] = 0
+    features_batch[np.isneginf(features_batch)] = 0
+    features_batch[features_batch == np.inf] = 0
+    features_batch[features_batch == np.NaN] = 0
 
     # TODO: divide into multiple files if needed
     
-    return features_batches, batches_timestamps, ori_frames_length
+    return features_batch, batch_timestamps, ori_frames_length
