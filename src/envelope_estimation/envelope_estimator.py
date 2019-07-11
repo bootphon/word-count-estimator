@@ -109,6 +109,8 @@ class EnvelopeEstimator:
             2D array, targeted output syllable envelopes.
         """
         
+        print("Training syllable envelope estimator model.")
+        
         new_shape = [y_train.shape[0], y_train.shape[1],1]
         y_train = np.reshape(y_train, new_shape)
         
@@ -121,6 +123,7 @@ class EnvelopeEstimator:
                        shuffle=True, epochs=15000,batch_size=250,
                        callbacks=[earlyStopping, checkPoint],
                        validation_split=0.1)
+        
         self.model.save(model_file)
         print("Training finished successfully.")
         print("Model saved at {}.".format(model_file))
@@ -139,6 +142,8 @@ class EnvelopeEstimator:
         envelopes_batch : ndarray
             2D array, output syllable envelopes for each sequence.
         """
+        
+        print("Predicting envelopes batch.")
         
         if len(self.model.layers[0].output_shape) > 3:
             new_shape = [X.shape[0], X.shape[1], X.shape[2], 1]

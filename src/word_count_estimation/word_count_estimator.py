@@ -117,6 +117,8 @@ class WordCountEstimator:
             List of the thresholds values to test for the model adaptation.
         """
         
+        print("Training WCE model.")
+        
         self.additional_features = ["duration",
                                     "sonority_mean_energy",
                                     "sonority_SD_energy"]
@@ -193,6 +195,9 @@ class WordCountEstimator:
         word_counts : ndarray
             1D array containing the word count per audio file/envelope.
         """
+        
+        print("Predicting word counts.")
+        
         n_files = len(envelopes)
         
         X = np.zeros((n_files, 1 + len(self.additional_features)))

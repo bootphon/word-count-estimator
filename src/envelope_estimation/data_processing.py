@@ -2,6 +2,7 @@ from librosa import filters, core
 import numpy as np
 import soundfile as sf
 import pickle
+from tqdm import tqdm
 
 
 DEFAULT_PARAMS="../models/envelope_estimator/default_data_processing_params.pickle"
@@ -127,6 +128,8 @@ class DataProcessing():
         ori_frames_length: ndarray
             1D array containing the lengths of the original features frames.
         """
+        
+        print("Generating features batch.")
         
         features_frames = generate_features_frames(audio_files,
                                                    self.fgen_window_length,
@@ -266,6 +269,8 @@ def generate_features_frames(audio_files, window_length, window_step,
 
     mel_filters = scaled_mel_filters(sample_rate, window_length, 24, 0, sample_rate/2)
     
+    pbar = tqdm(total=n_files)
+    
     i = 0
     while i < n_files:
         f = audio_files[i]
@@ -300,10 +305,11 @@ def generate_features_frames(audio_files, window_length, window_step,
         E.append(signal_energy)
         F.append(signal_mfcc)
         
-        # TODO: add progress bar
-        
         i += 1
+        pbar.update(1)
         
+    pbar.close()
+    
     return E, F
 
 

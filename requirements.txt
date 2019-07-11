@@ -4,3 +4,4 @@ soundfile
 scipy.io
 sklearn
 pickle
+tqdm
