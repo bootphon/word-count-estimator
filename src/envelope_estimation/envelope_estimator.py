@@ -93,11 +93,10 @@ class EnvelopeEstimator:
         
         try:
             self.model = load_model(model_file)
-            print("Model loaded successfully.")
         except:
             print("Path to model is wrong.")
     
-    def train(self, X_train, y_train, model_file="../models/curr_model.h5"):
+    def train(self, X_train, y_train, model_file="../models/trained_model.h5"):
         """
         Trains the model given the input 24 MFCCs sequences and their respective
         targeted output syllable envelopes.
@@ -149,5 +148,5 @@ class EnvelopeEstimator:
         if envelopes_batch.ndim > 2:
             envelopes_batch = envelopes_batch[:,:,0]
 
-        print("Envelopes batches predicted successfully.")
+        print("Envelopes batch predicted successfully.")
         return envelopes_batch

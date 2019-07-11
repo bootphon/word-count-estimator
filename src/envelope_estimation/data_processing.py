@@ -110,7 +110,7 @@ class DataProcessing():
         
     def generate_features_batch(self, audio_files):
         """
-        Generate features batch from a list of audio files.
+        Generate a features batch from a list of audio files.
         
         Parameters
         ----------

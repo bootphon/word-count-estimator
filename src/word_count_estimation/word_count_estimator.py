@@ -4,6 +4,11 @@ import statsmodels.api as sm
 from math import sqrt
 import sys
 
+THR=np.concatenate((np.linspace(0.0001, 0.0009, 9),
+                      np.array([0.001]),
+                      np.linspace(0.002, 0.01, 9),
+                      np.linspace(0.012, 0.492, 25),
+                      np.linspace(0.6, 1, 5)))
 
 class WordCountEstimator:
     """
@@ -87,8 +92,7 @@ class WordCountEstimator:
         for attr in model:
             setattr(self, attr, model[attr])
     
-    def train(self, envelopes, target_word_counts, thresholds,
-              model_file="../models/word_count_estimator/curr_model.pickle"):
+    def train(self, envelopes, target_word_counts, model_file, thresholds=THR):
         """
         Train the model given syllable envelopes and their respective target
         word counts. The resulting model is then saved to model_file. 
@@ -107,11 +111,10 @@ class WordCountEstimator:
             1D array of envelope per file.
         target_word_counts : list
             List of the word counts per file.
-        thresholds : list
-            List of the thresholds values to test for the model adaptation.
         model_file: str
             Path of the model file.
-            Defaults to "../models/word_count_estimator/curr_model.pickle".
+        thresholds : list
+            List of the thresholds values to test for the model adaptation.
         """
         
         self.additional_features = ["duration",
@@ -127,9 +130,6 @@ class WordCountEstimator:
             for j in range(n_thresholds):
                 n_syl_nuclei = len(peakdet(envelopes[i], thresholds[j])[0])
                 estimated_nuclei_counts[i, j] = n_syl_nuclei
-        
-        for j in range(n_thresholds):
-            print(thresholds[j], estimated_nuclei_counts[:,j])
         
         # determine best threshold
         corvals = np.zeros(n_thresholds)
@@ -170,10 +170,14 @@ class WordCountEstimator:
         
         # save results to a pickle file
         model = dict()
+        model["additional_features"] = self.additional_features
         model["alpha"] = self.alpha
         model["M"] = opti_M
         model["threshold"] = opti_threshold
         pickle.dump(model, open(model_file, 'wb'))
+        
+        print("WCE training finished successfully.")
+        print("Model saved at {}.".format(model_file))
         
     def predict(self, envelopes):
         """
