@@ -14,7 +14,7 @@ class EnvelopeEstimator:
     
     The model takes sequences of 24 MFCCs as input.
     The output of the BLSTM network is the activation of the output node for each
-    row of MFFCs presented to the network in the input sequence.
+    row of MFFCs presented to the network in the input sequence (syllable envelope).
 
     Remark: This model is not yet trainable as we do not have training data, hence the 
     default model made by Okko Räsänen is always used.
@@ -101,6 +101,13 @@ class EnvelopeEstimator:
         """
         Trains the model given the input 24 MFCCs sequences and their respective
         targeted output syllable envelopes.
+        
+        Parameters
+        ----------
+        X_train : ndarray
+            3D array, batch of MFCCs sequences.
+        y_train : ndarray
+            2D array, targeted output syllable envelopes.
         """
         
         new_shape = [y_train.shape[0], y_train.shape[1],1]
@@ -122,15 +129,25 @@ class EnvelopeEstimator:
     def predict(self, X):
         """
         Predict the syllable envelopes on a batch of MFCCs sequences.
+        
+        Parameters
+        ----------
+        X : ndarray
+            3D array, batch of MFCCs sequences.
+            
+        Returns
+        -------
+        envelopes_batch : ndarray
+            2D array, output syllable envelopes for each sequence.
         """
         
         if len(self.model.layers[0].output_shape) > 3:
             new_shape = [X.shape[0], X.shape[1], X.shape[2], 1]
             X = np.reshape(X, new_shape)
         
-        envelope_batch = self.model.predict_on_batch(X)
-        if envelope_batch.ndim > 2:
-            envelope_batch = envelope_batch[:,:,0]
+        envelopes_batch = self.model.predict_on_batch(X)
+        if envelopes_batch.ndim > 2:
+            envelopes_batch = envelopes_batch[:,:,0]
 
         print("Envelopes batches predicted successfully.")
-        return envelope_batches
+        return envelopes_batch
