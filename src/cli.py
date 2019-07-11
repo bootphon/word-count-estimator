@@ -3,16 +3,18 @@ import numpy as np
 import glob
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"]="-1"
-
 from envelope_estimation import DataProcessing, EnvelopeEstimator
 from word_count_estimation import WordCountEstimator
+
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
 
 def train(args):
     
-    print("Envelope estimation model used: {}".format(os.path.basename(args.env_model_file)))
-    print("The resulting wce model will be saved to {}".format(os.path.basename(args.wce_model_file)))
+    env_model_name = os.path.basename(args.env_model_file)
+    wce_model_name = os.path.basename(args.wce_model_file)
+    print("Envelope estimation model used: {}".format(env_model_name))
+    print("The resulting wce model will be saved to {}".format(wce_model_name))
     
     audio_files = glob.glob(os.path.join(args.audio_dir, "*.wav"))
     annotation_files = glob.glob(os.path.join(args.annotations_dir, "*.eaf"))
@@ -35,8 +37,10 @@ def train(args):
     
 def predict(args):
     
-    print("Envelope estimation model used: {}".format(os.path.basename(args.env_model_file)))
-    print("WCE model used: {}".format(os.path.basename(args.wce_model_file)))
+    env_model_name = os.path.basename(args.env_model_file)
+    wce_model_name = os.path.basename(args.wce_model_file)
+    print("Envelope estimation model used: {}".format(env_model_name))
+    print("WCE model used: {}".format(wce_model_name))
     
     audio_files = glob.glob(os.path.join(args.audio_dir, "*.wav"))
     
