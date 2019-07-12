@@ -30,7 +30,7 @@ if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || ! [[ $LANG =~ ^(english|spanish|
 fi
 
 # Get relative and absolute paths that we need.
-DATA_DIR=/vagrant
+DATA_DIR="./"
 SELFILE_ABS="$DATA_DIR/$SELFILE"
 ORTHO_ABS="$DATA_DIR/$ORTHO"
 DIRNAME_ABS=$(dirname "${ORTHO_ABS}")

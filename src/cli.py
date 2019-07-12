@@ -1,3 +1,8 @@
+"""
+CLI for the Word Count Estimation (WCE).
+
+"""
+
 import argparse
 import numpy as np
 import glob
