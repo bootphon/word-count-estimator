@@ -2,7 +2,7 @@
 # Given a txt file containing the following fields : onset offset transcription receiver speaker_tier (Note that eaf2txt.py generates such kind of files)
 # Returns an enriched version of it by cleaning the transcription field, syllabifying (or phonemizing it), counting the number of words, and the number of syllables
 
-LC_CTYPE=C
+LC_CTYPE=en_EN.utf8
 #########VARIABLES
 #Variables that have been passed by the user
 SELFILE=$1
@@ -132,11 +132,13 @@ $SCRIPT_DIR/syllabify.sh ${CLEAN_TRANSCRIPT_REL}3.tmp ${PHONEMIZED_REL} $LANG
 ## Append number of words to the clean transcription
 cat ${CLEAN_TRANSCRIPT_ABS}3.tmp | awk -F'[ ]' '{print $0"\t"NF}' > ${CLEAN_TRANSCRIPT_ABS}
 
+iconv -f iso-8859-1 -t utf-8 -o $PHONEMIZED_ABS $PHONEMIZED_ABS
+
 ## Concatenate those 2 files
 python -c "
 import re
-transcript_f = open(\"${CLEAN_TRANSCRIPT_ABS}\")
-phonemized_f = open(\"${PHONEMIZED_ABS}\")
+transcript_f = open(\"${CLEAN_TRANSCRIPT_ABS}\", encoding='utf-8')
+phonemized_f = open(\"${PHONEMIZED_ABS}\", encoding='utf-8')
 
 for transcript_l in transcript_f.readlines():
     nb_words = transcript_l.split('\t')[1]
@@ -162,6 +164,7 @@ paste -d$'\t' ${ORTHO_ABS}2.tmp ${ORTHO_ABS}.tmp > $ORTHO_ABS
 ##generated double spaces between 2 words (while not present in
 ##included)
 sed -i -e 's/ $//g' $ORTHO_ABS
+
 
 # Remove temporary files
 rm ${DIRNAME_ABS}/*.tmp
