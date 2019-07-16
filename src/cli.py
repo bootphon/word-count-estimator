@@ -7,12 +7,15 @@ import argparse
 import numpy as np
 import glob
 import os
+from dotenv import load_dotenv
 
 from envelope_estimation import DataProcessing, EnvelopeEstimator
+from word_count_estimation.annotations_processing import process_annotations
 from word_count_estimation import WordCountEstimator
 
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
+load_dotenv("./.env")
 
 def train(args):
     
@@ -20,11 +23,18 @@ def train(args):
     wce_model_name = os.path.basename(args.wce_model_file)
     print("Envelope estimation model used: {}".format(env_model_name))
     print("The resulting wce model will be saved to {}".format(wce_model_name))
+   
+    selcha_script = os.getenv("SELCHA_SCRIPT_PATH")
+    print(selcha_script)
+    tot_words, wav_list, alpha = process_annotations(args.audio_dir, 
+                                                     args.annotations_dir,
+                                                     args.rttm_dir,
+                                                     args.SAD_name,
+                                                     selcha_script)
     
-    audio_files = glob.glob(os.path.join(args.audio_dir, "*.wav"))
-    annotation_files = glob.glob(os.path.join(args.annotations_dir, "*.eaf"))
-    audio_files.sort(key= lambda x: int(os.path.basename(x)[:-4]))
-    
+    audio_files = wav_list
+    train = tot_words
+
     dp = DataProcessing()
     X_train, timestamps, ori_frames_length = dp.generate_features_batch(audio_files)
     
@@ -36,7 +46,6 @@ def train(args):
                                          ori_frames_length)
     
     wce = WordCountEstimator()
-    train = np.array([84, 138, 91, 23, 217, 116, 96, 148, 47, 105, 141, 549, 224, 352, 258])
     wce.train(envelopes, train, model_file=args.wce_model_file)
     
     
@@ -81,6 +90,9 @@ def main():
                               help='directory where the audio files are stored')
     parser_train.add_argument('annotations_dir',
                               help='directory where the annotation files are stored')
+    parser_train.add_argument('rttm_dir',
+                              help='directory where the SAD .rttm files are stored')
+    parser_train.add_argument('SAD_name', help='name of the SAD used')
     parser_train.add_argument('-e', '--env_model_file',
                               help='path to the syllable envelope estimator model file',
                               default=env_path)
@@ -92,6 +104,9 @@ def main():
     parser_predict = subparsers.add_parser('predict', help='predict mode')
     parser_predict.add_argument('audio_dir',
                                 help='directory where the audio files are stored')
+    parser_predict.add_argument('rttm_dir',
+                                help='directory where the SAD .rttm files are stored')
+    parser_predict.add_argument('SAD_name', help='name of the SAD used')
     parser_predict.add_argument('-e', '--env_model_file',
                                 help='path to the syllable envelope estimator model file',
                                 default=env_path)
@@ -101,7 +116,12 @@ def main():
     parser_predict.set_defaults(func=predict)
     
     args = parser.parse_args()
-    args.func(args)
+    try:
+        func = args.func
+    except AttributeError:
+        parser.error("too few arguments")
+    func(args)
+
 
 
 if __name__ == '__main__':

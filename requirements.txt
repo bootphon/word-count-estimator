@@ -1,6 +1,7 @@
 librosa
 numpy
 soundfile
-sklearn
+statsmodels
 pickle
 tqdm
+python-dotenv

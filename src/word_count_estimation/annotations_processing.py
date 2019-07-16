@@ -73,10 +73,10 @@ def eaf2txt(path_to_eaf, output_folder):
     return output_path
 
 
-def enrich_txt(path_to_txt, output_folder):
+def enrich_txt(path_to_txt, output_folder, path_to_script):
 
-    cmd = "./selcha2clean.sh {} {}_enriched.txt spanish".format(path_to_txt,
-                                                              path_to_txt[:-4])
+    cmd = "{} {} {}_enriched.txt spanish".format(path_to_script, path_to_txt,
+                                                 path_to_txt[:-4])
     subprocess.call(cmd, shell=True)
     os.remove(path_to_txt)
     entxt_path = "{}_enriched.txt".format(path_to_txt[:-4])
@@ -256,9 +256,9 @@ def calc_alpha(tot_words, tot_seg_words):
     return tot_seg_words / tot_words
 
 
-def process_annotations(wav_dir, eaf_dir, rttm_dir, sad):
+def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
 
-    eaf_files = glob.iglob(os.path.join(datadir, '*.eaf'))
+    eaf_files = glob.iglob(os.path.join(eaf_dir, '*.eaf'))
 
     tot_words = []
     tot_syls = []
@@ -268,22 +268,27 @@ def process_annotations(wav_dir, eaf_dir, rttm_dir, sad):
 
     for eaf_path in eaf_files:
         print("Processing %s" % eaf_path)
-        txt_path = eaf2txt(eaf_path, datadir)
-        enrich_txt_path = enrich_txt(txt_path, datadir)
-        rttm_path = "{}{}_{}.rttm".format(datadir, sad, os.path.basename(txt_path[:-4]))
-        audio_path = "{}.wav".format(txt_path[:-4])
+        txt_path = eaf2txt(eaf_path, eaf_dir)
+        enrich_txt_path = enrich_txt(txt_path, eaf_dir, selcha_script_path)
+        rttm_name = "{}_{}.rttm".format(sad, os.path.basename(txt_path[:-4]))
+        rttm_path = os.path.join(rttm_dir, rttm_name)
+        audio_name = "{}.wav".format(os.path.basename(txt_path[:-4]))
+        audio_path = os.path.join(audio_dir, audio_name)
+        print(rttm_path, audio_path)
 
-        if (os.path.isfile(os.path.join(rttm_dir, rttm_path)) and 
-                os.path.isfile(os.path.join(wav_dir, audio_path))):
-            tw, ts, sw, ss, wl = count_annotations_words(enrich_txt_path, rttm_path,
-                                                         audio_path, wav_dir)
-            tot_words.append(tw)
-            tot_syls.append(ts)
-            tot_segments_words.append(sw)
-            tot_segments_syls.append(ss)
-            wav_list.append(wl)
+        if os.path.isfile(rttm_path):
+            if os.path.isfile(audio_path):
+                tw, ts, sw, ss, wl = count_annotations_words(enrich_txt_path, rttm_path,
+                                                             audio_path, audio_dir)
+                tot_words.append(tw)
+                tot_syls.append(ts)
+                tot_segments_words.append(sw)
+                tot_segments_syls.append(ss)
+                wav_list.append(wl)
+            else:
+                print("Missing .wav file for {}".format(eaf_path))
         else:
-            print("Missing wav or rttm for {}".format(eaf_path))
+            print("Missing .rttm for {}".format(eaf_path))
 
     tot_segments_words = np.concatenate(tot_segments_words)
     wav_list = np.concatenate(wav_list)
