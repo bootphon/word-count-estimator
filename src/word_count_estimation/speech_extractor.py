@@ -1,3 +1,14 @@
+"""Speech Extractor
+
+Module to extract segments of speech from the original wavs and gather the
+results of the WCE on these segments that come from the same file.
+
+The module contains the following functions:
+
+    * extract_speech - returns the list of paths to the wavs segments.
+    * retrieve_word_counts - writes the gathered results per file to a .csv file.
+"""
+
 import os
 import sys
 import subprocess
@@ -8,12 +19,22 @@ import csv
 
 def extract_speech(audio_dir, rttm_dir, sad_name):
     """
-    Read a .rttm file and extracts segments of the wav files that
-    have been annotated as being speech.
+    Read audio files and their corresponding .rttm files and extracts segments
+    of the wav files that have been annotated as being speech.
 
-    :param wav: Path to the audio file (.wav).
-    :param sad: Path to the rttm file (.rttm).
-    :param out: Folder where the segments need to be stored.
+    Paremeters
+    ----------
+    audio_dir : str
+        Path to the directory containing the audio files (.wav).
+    rtm_dir : str
+        Path to the directory containing the SAD files (.rttm).
+    sad_name : str
+        Name of the SAD algorithm used.
+
+    Returns
+    -------
+    wav_list : list
+        List containing the path to the wav segments resulting from the trim.
     """
 
     wav_list = []
@@ -56,7 +77,20 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
 
 
 def retrieve_files_word_counts(word_counts, wav_list, output):
-    
+    """
+    Retrieve the word count for each file from the word count for the wav 
+    chunks.
+
+    Parameters
+    ----------
+    word_counts : list
+        List of the word counts per wav chunk.
+    wav_list : list
+        List of paths to the wav chunks.
+    output : str
+        Path to the output file where to store the results.
+    """
+
     files = []
     files_word_counts = []
     
