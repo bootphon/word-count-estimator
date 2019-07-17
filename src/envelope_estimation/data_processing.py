@@ -288,7 +288,7 @@ def generate_features_frames(audio_files, window_length, window_step,
         # TODO: add spectral subtraction if possible
         
         # slide window over signal and compute energy and MFFCs at each step
-        n_windows = s_length // window_step
+        n_windows = s_length // window_step + 1
         signal_mfcc = np.zeros((n_windows, mel_filters.shape[0]))
         signal_energy = np.zeros(n_windows)
         
