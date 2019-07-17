@@ -153,11 +153,12 @@ class WordCountEstimator:
             X[l, 0] = nuclei_counts[l]
             X[l, 1:] = add_features(envelopes[l], self.additional_features)
         
-        # determine M coefficients by multpiple linear regression on X and
+        # determine M coefficients by multiple linear regression on X and
         # target_word_counts
         X = sm.add_constant(X)
         est = sm.OLS(target_word_counts, X).fit()
         opti_M = est.params
+        print("opti_m", opti_M)
 
         # readjust M by dividing by alpha: the recall of the SAD
         opti_M = opti_M / self.alpha
@@ -205,6 +206,7 @@ class WordCountEstimator:
             n_syl_nuclei = len(peakdet(envelopes[k], self.threshold)[0])
             X[k, 0] = n_syl_nuclei
             X[k, 1:] = add_features(envelopes[k], self.additional_features)
+        X = sm.add_constant(X)
 
         word_counts = np.matmul(X, self.M)
         
