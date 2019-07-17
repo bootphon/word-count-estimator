@@ -1,19 +1,18 @@
-"""
-This script converts an eaf file into a txt file 
-containing the following information :
+"""Annotations Processing
 
-    onset offset transcription receiver speaker_tier
+Module to process the annotations files (.eaf).
 
-It can be run either on a single eaf file,
-or on a whole folder containing eaf files.
+It contains:
 
-Example of use :
-    python tools/eaf2txt.py -i data/0396.eaf    # One one file
-    python tools/eaf2txt.py -i data/            # On a whole folder
-
-About the naming convention of the output :
-    For each file called input_file.eaf,
-    the result will be stored in input_file.txt
+    * eaf2txt - returns a .txt containing timestamps and transcription from an
+    annotation file.
+    * enrich_txt - enriches the .txt file by adding information at each line.
+    * count_annotations_words - counts the number of "seen" words, and real number
+    of words in each audio file with regard to the SAD and the annotations.
+    * calc_alpha - compute the alpha coefficient from the number of "seen" words
+    and the number of real words.
+    * process_annotations - main function using all above functions.
+    (see more info in each function's docstring)
 """
 
 import csv, sys, os
@@ -26,17 +25,20 @@ import glob
 import subprocess
 import sys
 
+
 def eaf2txt(path_to_eaf, output_folder):
     """
     Convert an eaf file to the txt format by extracting the onset, offset, ortho,
-    and the speaker tier. Note that the ortho field has been made by a human and needs
-    to be cleaned up.
+    and the speaker tier.
     Only the speaker tiers MOT, FAT and CHI are selected. Any other tier is 
     ignored.
 
     Parameters
     ----------
-    path_to_eaf :   path to the eaf file.
+    path_to_eaf : str
+        Path to the eaf file.
+    output_folder : str
+        Path to the output directory. 
 
     Write a txt whose name is the same than the eaf's one in output_folder
     """
@@ -73,13 +75,30 @@ def eaf2txt(path_to_eaf, output_folder):
     return output_path
 
 
-def enrich_txt(path_to_txt, output_folder, path_to_script):
+def enrich_txt(path_to_txt, path_to_script):
+    """"
+    Enriches the .txt file by syllabifying the transcriptions, counting the
+    number of syllables and words.
+    
+    Parameters
+    ----------
+    path_to_txt : str
+        Path to the .txt file to be enriched.
+    path_to_script : str
+        Path to scripts in charge of enriching the file.
+
+    Returns
+    -------
+    entxt_path : str
+        Path to the enriched file.
+    """
 
     cmd = "{} {} {}_enriched.txt spanish".format(path_to_script, path_to_txt,
                                                  path_to_txt[:-4])
     subprocess.call(cmd, shell=True)
     os.remove(path_to_txt)
     entxt_path = "{}_enriched.txt".format(path_to_txt[:-4])
+    
     return entxt_path
 
 
@@ -88,6 +107,23 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
     This function takes an enriched.txt file and .rttm file and measures the
     number of words and syllables in each of the SAD segments defined in the
     rttm file.
+    It also extracts .wav files corresponding to these SAD segments from the
+    original audio file.
+
+    Parameters
+    ----------
+    enrich_file : str
+        Path to the enriched file (.txt).
+    rttm_file : str
+        Path to the SAD file (.rttm).
+    audio_file : str
+        Path to the audio file (.wav).
+    save_dir : str
+        Path to the output directory.
+
+    Returns
+    -------
+
     """
 
     curr_file = audio_file[:-4] 
@@ -269,7 +305,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
     for eaf_path in eaf_files:
         print("Processing %s" % eaf_path)
         txt_path = eaf2txt(eaf_path, eaf_dir)
-        enrich_txt_path = enrich_txt(txt_path, eaf_dir, selcha_script_path)
+        enrich_txt_path = enrich_txt(txt_path, selcha_script_path)
         rttm_name = "{}_{}.rttm".format(sad, os.path.basename(txt_path[:-4]))
         rttm_path = os.path.join(rttm_dir, rttm_name)
         audio_name = "{}.wav".format(os.path.basename(txt_path[:-4]))
