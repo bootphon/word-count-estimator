@@ -110,6 +110,9 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
     It also extracts .wav files corresponding to these SAD segments from the
     original audio file.
 
+    This is function has a second version see the original function on the
+    WCE_VM repo in /aux_VM/combine_rttm_and_enrich.py.
+
     Parameters
     ----------
     enrich_file : str
@@ -123,7 +126,17 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
 
     Returns
     -------
-
+    tot_words : float
+        Real number of words in the audio file (derived from annotations).
+    tot_syls : float
+        Real number of syllable in the audio file (derived from annotations).
+    SAD_segments_words : ndarray
+        1D array containing the number of words in each SAD segment.
+    SAD_segments_syllables : ndarray
+        1D array containing the number of syllables in each SAD segment.
+    wavList : list
+        List of the .wav files corresponding to the SAD segments (same order
+        as the 2 previous arrays).
     """
 
     curr_file = audio_file[:-4] 
@@ -288,12 +301,39 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
     return tot_words, tot_syls, SAD_segments_words, SAD_segments_syllables, wavList
 
 
-def calc_alpha(tot_words, tot_seg_words):
-    return tot_seg_words / tot_words
-
-
 def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
+    """
+    Process all annotations files in a given dir using the previous functions:
+        - cut the SAD segments
+        - count the number of words in those segments in annotations
+        - compute alpha
 
+    Parameters
+    ----------
+    audio_dir : str
+        Path to the directory of the audio files.
+    eaf_dir : str 
+        Path to the directory of the annotations files.
+    rttm_dir : str
+        Path to the directory of the SAD files.
+    sad : str
+        Name of the SAD program used.
+    selcha_script_path : str
+        Path to scripts in charge of enriching the files.
+
+    Returns
+    -------
+    tot_segments_words : list
+        List of the word counts of all the segments coming from the files in 
+        audio_dir.
+    wav_list : list
+        List of the path to those segments (same order as previous list).
+    alpha : float
+        Alpha value, corresponding to the ratio of segments' number of words
+        on the real number of words, to correct the error of the SAD when
+        predicting later on.
+    """
+    
     eaf_files = glob.iglob(os.path.join(eaf_dir, '*.eaf'))
 
     tot_words = []
@@ -329,6 +369,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
     tot_segments_words = np.concatenate(tot_segments_words)
     wav_list = np.concatenate(wav_list)
     
-    alpha = calc_alpha(sum(tot_words), np.sum(tot_segments_words))
+    alpha = sum(tot_words) / tot_segments_words
     
     return tot_segments_words, wav_list, alpha
+
