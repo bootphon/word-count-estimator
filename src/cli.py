@@ -16,6 +16,7 @@ import argparse
 import numpy as np
 import glob
 import os
+import csv
 from dotenv import load_dotenv
 
 from envelope_estimation import DataProcessing, EnvelopeEstimator
@@ -55,14 +56,12 @@ def train(args):
    
     selcha_script = os.getenv("SELCHA_SCRIPT_PATH")
     print(selcha_script)
-    tot_words, wav_list, alpha = process_annotations(args.audio_dir, 
-                                                     args.annotations_dir,
-                                                     args.rttm_dir,
-                                                     args.SAD_name,
-                                                     selcha_script)
+    tot_files_words, tot_seg_words, wav_list, alpha = \
+            process_annotations(args.audio_dir, args.annotations_dir,
+                                args.rttm_dir, args.SAD_name, selcha_script)
     
     audio_files = wav_list
-    train = tot_words
+    train = tot_seg_words
     dp = DataProcessing()
     X_train, timestamps, ori_frames_length = dp.generate_features_batch(audio_files)
     
@@ -76,6 +75,12 @@ def train(args):
     wce = WordCountEstimator()
     wce.alpha = alpha
     wce.train(envelopes, train, model_file=args.wce_model_file)
+    
+    if args.ref_path:
+        with open(args.ref_path, 'w') as ref:
+            csvwriter = csv.writer(ref, delimiter=';')
+            for row in tot_files_words:
+                csvwriter.writerow(row)
     
     
 def predict(args):
@@ -148,6 +153,9 @@ def main():
     parser_train.add_argument('-w', '--wce_model_file',
                               help='path to the word count estimator model file',
                               default=adapted_wce_path)
+    parser_train.add_argument('-r', '--ref_path',
+                              help='path to the output reference file containing\
+                              the word counts of each audio file')
     parser_train.set_defaults(func=train)
     
     parser_predict = subparsers.add_parser('predict', help='predict mode')

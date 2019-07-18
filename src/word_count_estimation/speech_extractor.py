@@ -107,9 +107,11 @@ def retrieve_files_word_counts(word_counts, wav_list, output):
             wc += word_counts[i]
         files_word_counts.append((f, wc))
 
+    # TODO: CHANGE sort key to match naming convention
     with open(output, 'w') as out:
         csvwriter = csv.writer(out, delimiter=';')
-        for row in files_word_counts:
+        for row in sorted(files_word_counts, key=lambda k: (int(k[0].split('_')[1]),
+                                                            int(k[0].split('_')[-2]))):
             csvwriter.writerow(row)
 
 

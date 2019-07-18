@@ -342,7 +342,9 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
     tot_segments_syls = [] 
     wav_list = []
 
-    for eaf_path in eaf_files:
+    # TODO: CHANGE sort key to match naming convention
+    for eaf_path in sorted(eaf_files, key=lambda k : (int(k.split('_')[1]),
+                                                      int(k.split('_')[-2]))):
         print("Processing %s" % eaf_path)
         txt_path = eaf2txt(eaf_path, eaf_dir)
         enrich_txt_path = enrich_txt(txt_path, selcha_script_path)
@@ -356,7 +358,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
             if os.path.isfile(audio_path):
                 tw, ts, sw, ss, wl = count_annotations_words(enrich_txt_path, rttm_path,
                                                              audio_path, audio_dir)
-                tot_words.append(tw)
+                tot_words.append((os.path.basename(audio_path)[:-4], tw))
                 tot_syls.append(ts)
                 tot_segments_words.append(sw)
                 tot_segments_syls.append(ss)
@@ -369,7 +371,8 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
     tot_segments_words = np.concatenate(tot_segments_words)
     wav_list = np.concatenate(wav_list)
     
-    alpha = sum(tot_words) / tot_segments_words
+    n = sum(x[1] for x in tot_words)
+    alpha = n / np.sum(tot_segments_words)
     
-    return tot_segments_words, wav_list, alpha
+    return tot_words, tot_segments_words, wav_list, alpha
 
