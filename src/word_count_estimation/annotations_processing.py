@@ -70,8 +70,6 @@ def eaf2txt(path_to_eaf, output_folder):
                                                        transcript, speaker)
                 output_file.write(output_str)
 
-        output_file.close()
-
     return output_path
 
 
@@ -342,7 +340,8 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
     tot_segments_syls = [] 
     wav_list = []
 
-    # TODO: CHANGE sort key to match naming convention
+    # TODO: CHANGE sort key to match naming convention + issue when path contains
+    # '_'
     for eaf_path in sorted(eaf_files, key=lambda k : (int(k.split('_')[1]),
                                                       int(k.split('_')[-2]))):
         print("Processing %s" % eaf_path)
@@ -361,6 +360,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
                 tot_words.append((os.path.basename(audio_path)[:-4], tw))
                 tot_syls.append(ts)
                 tot_segments_words.append(sw)
+                print(sw)
                 tot_segments_syls.append(ss)
                 wav_list.append(wl)
             else:

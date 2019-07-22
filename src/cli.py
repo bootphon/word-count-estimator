@@ -32,7 +32,7 @@ load_dotenv("./.env")
 
 def train(args):
     """
-    usage: cli.py train [-h] [-e ENV_MODEL_FILE] [-w WCE_MODEL_FILE]
+    usage: cli.py train [-h] [-e ENV_MODEL_FILE] [-w WCE_MODEL_FILE] [-r REF_PATH]
                     audio_dir annotations_dir rttm_dir SAD_name
 
     positional arguments:
@@ -47,8 +47,11 @@ def train(args):
                             path to the syllable envelope estimator model file
       -w WCE_MODEL_FILE, --wce_model_file WCE_MODEL_FILE
                             path to the word count estimator model file
-    """
-    
+      -r REF_PATH, --ref_path REF_PATH
+                            path to the output reference file containing the word
+                            counts of each audio file
+    """ 
+
     env_model_name = os.path.basename(args.env_model_file)
     wce_model_name = os.path.basename(args.wce_model_file)
     print("Envelope estimation model used: {}".format(env_model_name))
@@ -62,6 +65,7 @@ def train(args):
     
     audio_files = wav_list
     train = tot_seg_words
+    print(audio_files, train)
     dp = DataProcessing()
     X_train, timestamps, ori_frames_length = dp.generate_features_batch(audio_files)
     

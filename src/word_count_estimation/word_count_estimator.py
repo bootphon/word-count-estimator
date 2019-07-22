@@ -48,7 +48,7 @@ class WordCountEstimator:
         Predicts the word counts for a given list of syllable envelopes.
     """
     
-    def __init__(self, threshold=0.5, M=np.array([1,1]), alpha=1, additional_features=[]):
+    def __init__(self, threshold=0.5, M=np.array([0,1]), alpha=1, additional_features=[]):
         """
         Parameters
         ----------
