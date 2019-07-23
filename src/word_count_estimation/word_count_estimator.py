@@ -155,10 +155,9 @@ class WordCountEstimator:
         
         # determine M coefficients by multiple linear regression on X and
         # target_word_counts
-        X = sm.add_constant(X)
+        X = sm.add_constant(X, has_constant='add')
         est = sm.OLS(target_word_counts, X).fit()
         opti_M = est.params
-        print("opti_m", opti_M)
 
         # readjust M by dividing by alpha: the recall of the SAD
         opti_M = opti_M / self.alpha
@@ -172,12 +171,9 @@ class WordCountEstimator:
         print("Relative RMSE error on training set: {:.2f} per SAD segment".format(RMSE_train))
         
         # save results to a pickle file
-        model = dict()
-        model["additional_features"] = self.additional_features
-        model["alpha"] = self.alpha
-        model["M"] = opti_M
-        model["threshold"] = opti_threshold
-        pickle.dump(model, open(model_file, 'wb'))
+        self.M = opti_M
+        self.threshold = opti_threshold
+        pickle.dump(self.__dict__, open(model_file, 'wb'))
         
         print("WCE training finished successfully.")
         print("Model saved at {}.".format(model_file))
@@ -206,7 +202,7 @@ class WordCountEstimator:
             n_syl_nuclei = len(peakdet(envelopes[k], self.threshold)[0])
             X[k, 0] = n_syl_nuclei
             X[k, 1:] = add_features(envelopes[k], self.additional_features)
-        X = sm.add_constant(X)
+        X = sm.add_constant(X, has_constant='add')
 
         word_counts = np.matmul(X, self.M)
         

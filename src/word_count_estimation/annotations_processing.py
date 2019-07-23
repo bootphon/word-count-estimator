@@ -9,8 +9,6 @@ It contains:
     * enrich_txt - enriches the .txt file by adding information at each line.
     * count_annotations_words - counts the number of "seen" words, and real number
     of words in each audio file with regard to the SAD and the annotations.
-    * calc_alpha - compute the alpha coefficient from the number of "seen" words
-    and the number of real words.
     * process_annotations - main function using all above functions.
     (see more info in each function's docstring)
 """
@@ -360,7 +358,6 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
                 tot_words.append((os.path.basename(audio_path)[:-4], tw))
                 tot_syls.append(ts)
                 tot_segments_words.append(sw)
-                print(sw)
                 tot_segments_syls.append(ss)
                 wav_list.append(wl)
             else:
@@ -372,7 +369,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
     wav_list = np.concatenate(wav_list)
     
     n = sum(x[1] for x in tot_words)
-    alpha = n / np.sum(tot_segments_words)
+    alpha = np.sum(tot_segments_words) / n
     
     return tot_words, tot_segments_words, wav_list, alpha
 

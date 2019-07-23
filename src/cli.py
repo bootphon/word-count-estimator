@@ -58,14 +58,12 @@ def train(args):
     print("The resulting wce model will be saved to {}".format(wce_model_name))
    
     selcha_script = os.getenv("SELCHA_SCRIPT_PATH")
-    print(selcha_script)
     tot_files_words, tot_seg_words, wav_list, alpha = \
             process_annotations(args.audio_dir, args.annotations_dir,
                                 args.rttm_dir, args.SAD_name, selcha_script)
     
     audio_files = wav_list
     train = tot_seg_words
-    print(audio_files, train)
     dp = DataProcessing()
     X_train, timestamps, ori_frames_length = dp.generate_features_batch(audio_files)
     
@@ -86,6 +84,7 @@ def train(args):
             for row in tot_files_words:
                 csvwriter.writerow(row)
     
+    wce.summary()
     
 def predict(args):
     """
