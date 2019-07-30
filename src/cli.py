@@ -17,12 +17,14 @@ import numpy as np
 import glob
 import os
 import csv
+import shutil
 from dotenv import load_dotenv
 
 from envelope_estimation import DataProcessing, EnvelopeEstimator
 from word_count_estimation.annotations_processing import process_annotations
 from word_count_estimation.speech_extractor import extract_speech, retrieve_files_word_counts
 from word_count_estimation import WordCountEstimator
+
 
 # To not use GPU for envelope estimation.
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
@@ -43,17 +45,26 @@ def train(args):
 
     optional arguments:
       -h, --help            show this help message and exit
-      -e ENV_MODEL_FILE, --env_model_file ENV_MODEL_FILE
+      -e ENV_MODEL_FILE, --env_model_path ENV_MODEL_FILE
                             path to the syllable envelope estimator model file
-      -w WCE_MODEL_FILE, --wce_model_file WCE_MODEL_FILE
+      -w WCE_MODEL_FILE, --wce_model_path WCE_MODEL_FILE
                             path to the word count estimator model file
       -r REF_PATH, --ref_path REF_PATH
                             path to the output reference file containing the word
                             counts of each audio file
     """ 
 
-    env_model_name = os.path.basename(args.env_model_file)
-    wce_model_name = os.path.basename(args.wce_model_file)
+    if not os.path.exists(args.audio_dir):
+        raise IOError("Audio directory does not exist.")
+    if not os.path.exists(args.annotations_dir):
+        raise IOError("Annotation directory does not exist.")
+    if not os.path.exists(args.rttm_dir):
+        raise IOError("SAD directory does not exist.")
+    if not os.path.exists(args.env_model_path):
+        raise IOError("Envelope estimator model file does not exist.")
+
+    env_model_name = os.path.basename(args.env_model_path)
+    wce_model_name = os.path.basename(args.wce_model_path)
     print("Envelope estimation model used: {}".format(env_model_name))
     print("The resulting wce model will be saved to {}".format(wce_model_name))
    
@@ -63,29 +74,35 @@ def train(args):
                                 args.rttm_dir, args.SAD_name, selcha_script)
     
     audio_files = wav_list
-    train = tot_seg_words
+    target_counts = tot_seg_words
     dp = DataProcessing()
-    X_train, timestamps, ori_frames_length = dp.generate_features_batch(audio_files)
+    feature_batch, batch_timestamps, files_length = dp.generate_features_batch(audio_files)
     
     env_estimator = EnvelopeEstimator()
-    env_estimator.load_model(args.env_model_file)
-    envelopes_batch = env_estimator.predict(X_train)
-    envelopes = dp.reconstruct_envelopes(envelopes_batch,
-                                         timestamps,
-                                         ori_frames_length)
+    env_estimator.load_model(args.env_model_path)
+    envelope_batch = env_estimator.predict(feature_batch)
+    envelopes = dp.reconstruct_envelopes(envelope_batch,
+                                         batch_timestamps,
+                                         files_length)
     
     wce = WordCountEstimator()
     wce.alpha = alpha
-    wce.train(envelopes, train, model_file=args.wce_model_file)
+    wce.train(envelopes, target_counts, model_file=args.wce_model_path)
     
     if args.ref_path:
+        if not os.path.exists(os.path.dirname(args.ref_path)):
+            raise IOError("Output directory does not exist.")
         with open(args.ref_path, 'w') as ref:
             csvwriter = csv.writer(ref, delimiter=';')
             for row in tot_files_words:
                 csvwriter.writerow(row)
     
+    chunks_dir = os.path.dirname(audio_files[0])
+    shutil.rmtree(chunks_dir)
+
     wce.summary()
-    
+
+
 def predict(args):
     """
     usage: cli.py predict [-h] [-e ENV_MODEL_FILE] [-w WCE_MODEL_FILE]
@@ -99,34 +116,47 @@ def predict(args):
 
     optional arguments:
       -h, --help            show this help message and exit
-      -e ENV_MODEL_FILE, --env_model_file ENV_MODEL_FILE
+      -e ENV_MODEL_FILE, --env_model_path ENV_MODEL_FILE
                             path to the syllable envelope estimator model file
-      -w WCE_MODEL_FILE, --wce_model_file WCE_MODEL_FILE
+      -w WCE_MODEL_FILE, --wce_model_path WCE_MODEL_FILE
                             path to the word count estimator model file
     """
 
-    env_model_name = os.path.basename(args.env_model_file)
-    wce_model_name = os.path.basename(args.wce_model_file)
+    if not os.path.exists(args.audio_dir):
+        raise IOError("Audio directory does not exist.")
+    if not os.path.exists(args.rttm_dir):
+        raise IOError("SAD directory does not exist.")
+    if not os.path.exists(os.path.dirname(args.output)):
+        raise IOError("Output directory does not exist.")
+    if not os.path.exists(args.env_model_path):
+        raise IOError("Envelope estimator model file does not exist.")
+    if not os.path.exists(args.wce_model_path):
+        raise IOError("Envelope estimator model file does not exist.")
+
+    env_model_name = os.path.basename(args.env_model_path)
+    wce_model_name = os.path.basename(args.wce_model_path)
     print("Envelope estimation model used: {}".format(env_model_name))
     print("WCE model used: {}".format(wce_model_name))
     
     audio_files = extract_speech(args.audio_dir, args.rttm_dir, args.SAD_name)
-    
     dp = DataProcessing()
     X, timestamps, ori_frames_length = dp.generate_features_batch(audio_files)
     
     env_estimator = EnvelopeEstimator()
-    env_estimator.load_model(args.env_model_file)
+    env_estimator.load_model(args.env_model_path)
     envelopes_batch = env_estimator.predict(X)
     envelopes = dp.reconstruct_envelopes(envelopes_batch,
                                          timestamps,
                                          ori_frames_length)
 
     wce = WordCountEstimator()
-    wce.load_model(args.wce_model_file)
+    wce.load_model(args.wce_model_path)
     word_counts = wce.predict(envelopes)
 
     retrieve_files_word_counts(word_counts, audio_files, args.output)
+
+    chunks_dir = os.path.dirname(audio_files[0])
+    shutil.rmtree(chunks_dir)
 
 
 def main():
@@ -150,10 +180,10 @@ def main():
     parser_train.add_argument('rttm_dir',
                               help='directory where the SAD .rttm files are stored')
     parser_train.add_argument('SAD_name', help='name of the SAD used')
-    parser_train.add_argument('-e', '--env_model_file',
+    parser_train.add_argument('-e', '--env_model_path',
                               help='path to the syllable envelope estimator model file',
                               default=env_path)
-    parser_train.add_argument('-w', '--wce_model_file',
+    parser_train.add_argument('-w', '--wce_model_path',
                               help='path to the word count estimator model file',
                               default=adapted_wce_path)
     parser_train.add_argument('-r', '--ref_path',
@@ -168,10 +198,10 @@ def main():
                                 help='directory where the SAD .rttm files are stored')
     parser_predict.add_argument('SAD_name', help='name of the SAD used')
     parser_predict.add_argument('output', help='path to the word count output .csv file')
-    parser_predict.add_argument('-e', '--env_model_file',
+    parser_predict.add_argument('-e', '--env_model_path',
                                 help='path to the syllable envelope estimator model file',
                                 default=env_path)
-    parser_predict.add_argument('-w', '--wce_model_file',
+    parser_predict.add_argument('-w', '--wce_model_path',
                                 help='path to the word count estimator model file',
                                 default=default_wce_path)
     parser_predict.set_defaults(func=predict)

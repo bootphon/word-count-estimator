@@ -3,6 +3,7 @@ import numpy as np
 import soundfile as sf
 import pickle
 from tqdm import tqdm
+#from logmmse import logmmse
 
 
 DEFAULT_PARAMS="../models/envelope_estimator/default_data_processing_params.pickle"
@@ -13,10 +14,10 @@ class DataProcessing():
     Class for data processing tasks.
     
     Its purpose is to:
-        - extract features from the input audio files and create batch from
+        - extract features from the input audio files and create a batch from
         those features.
-        - once the batch have been processed by the syllable envelope
-        estimator, reconstruct the syllable envelope of each file.
+        - once the batch has been processed by the syllable envelope estimator,
+        reconstruct the syllable envelope of each file from it.
     
     Attributes
     ----------
@@ -46,7 +47,7 @@ class DataProcessing():
     load_parameters(params_file)
         Load the data processing parameters from a given file.
     generate_features_batch(self, audio_files)
-        Generate features batch from a list of audio files.
+        Generate a features batch from a list of audio files.
     reconstruct_envelopes(envelopes_batch, timestamps, ori_frames_length)
         Reconstruct the syllable envelope of each file from the result batch
         of the envelope estimator.
@@ -78,36 +79,43 @@ class DataProcessing():
         self.cut_window_length = cut_window_length
         self.cut_window_step = cut_window_step
 
+        # meme and devi are constant and directly loaded from default file.
         params =  pickle.load(open(DEFAULT_PARAMS, 'rb'))
         self.meme = params["meme"]
         self.devi = params["devi"]
         
     def save_parameters(self, params_file):
         """
-        Save the data processing parameters to a given file.
+        Save the data processing parameters to a file.
         
         Parameters
         ----------
         params_file : str
-            Path to the parameters file.
+            Path to the file to store the parameters.
         """
-        
-        params = self.__dict__
-        pickle.dump(params, open(params_file, 'wb'))
+
+        try:
+            params = self.__dict__
+            pickle.dump(params, open(params_file, 'wb'))
+        except IOError:
+            print("Wrong input file for the data processing parameters.")
         
     def load_parameters(self, params_file):
         """
-        Load the data processing parameters from a given file.
+        Load the data processing parameters from a file.
 
         Parameters
         ----------
         params_file : str
-            Path to the parameters file.
+            Path to the file where the parameters are stored.
         """
-        
-        params = pickle.load(open(params_file, 'rb'))
-        for attr in params:
-            setattr(self, attr, params[attr])
+
+        try:
+            params = pickle.load(open(params_file, 'rb'))
+            for attr in params:
+                setattr(self, attr, params[attr])
+        except IOError:
+            print("Wrong input file for the data processing parameters.")
         
     def generate_features_batch(self, audio_files):
         """
@@ -115,74 +123,77 @@ class DataProcessing():
         
         Parameters
         ----------
-        params_file : str
-            Path to the parameters file.
+        audio_files : list
+            List of the paths to the audio files to process.
             
         Returns
         -------
-        features_batch : ndarray
-            3D array of equally sized batch of features.
+        feature_batch : ndarray
+            3D, array of equally sized frames of features.
         batch_timestamps : ndarray
-            3D array of the timestamps and frame numbers of each value in the
-            batch.
-        ori_frames_length: ndarray
-            1D array containing the lengths of the original features frames.
+            3D, array of the original timestamps and file number of each features
+            column in the frames of the batch.
+        files_length: ndarray
+            1D, array containing the lengths of the audio files.
         """
         
-        print("Generating features batch.")
+        print("Generating the feature batch.")
         
-        features_frames = generate_features_frames(audio_files,
-                                                   self.fgen_window_length,
-                                                   self.fgen_window_step)[1]
+        files_features = generate_features(audio_files,
+                                           self.fgen_window_length,
+                                           self.fgen_window_step)[1]
         
-        features_batch, batch_timestamps, ori_frames_length = \
-            cut_features(features_frames, self.cut_window_length,
-                         self.cut_window_step, self.meme, self.devi)
+        feature_batch, batch_timestamps, files_length = \
+                    cut_features(files_features, self.cut_window_length,
+                                 self.cut_window_step, self.meme, self.devi)
         
-        return features_batch, batch_timestamps, ori_frames_length
+        return feature_batch, batch_timestamps, files_length
         
-    def reconstruct_envelopes(self, envelopes_batch, timestamps, ori_frames_length):
+    def reconstruct_envelopes(self, envelope_batch, batch_timestamps, files_length):
         """
-        Reconstruct the syllable envelope of each file from the result batch
-        of the envelope estimator.
-        
+        Reconstruct the syllable envelope of each file from the envelope batch.
+        The envelope batch is the result of the envelope estimation on the 
+        feature batch.
+
         Parameters
         ----------
-        features_batch : ndarray
-            3D array of equally sized batch of features.
-        timestamps : ndarray
-            3D array of the timestamps and frame numbers of each value in the
-            batch.
-        ori_frames_length: ndarray
-            1D array containing the lengths of the original features frames.
-            
+        envelope_batch : ndarray
+            2D, array of the envelope arrays.
+        batch_timestamps : ndarray
+            2D, array of the original timestamps and file number of each features
+            column in the frames of the batch.
+        files_length: ndarray
+            1D, array containing the lengths of the audio files.
+        
         Returns
         -------
         envelopes : list
-            list of the envelope arrays of the audio files.
+            List of the envelope arrays of the audio files.
         """
         
-        n_files = len(ori_frames_length)
+        n_files = len(files_length)
         envelopes = []
         tot_sums = []
-        
+         
         for k in range(n_files):
-           envelopes.append(np.zeros(ori_frames_length[k]))
-           tot_sums.append(np.zeros(ori_frames_length[k]))
+           envelopes.append(np.zeros(files_length[k]))
+           tot_sums.append(np.zeros(files_length[k]))
         
         # add (in envelopes) and count (in tot_sums) values in the envelopes
-        # batch which come from the same feature and batch
-        n_batch = envelopes_batch.shape[0]
-        for i in range(n_batch):
-            batch_ts = timestamps[i,:,:]
-            for j in range(self.cut_window_length):
-                frame_nb = batch_ts[j][0]
-                ts = batch_ts[j][1]
-                if ts > -1:
-                    envelopes[frame_nb][ts] += envelopes_batch[i][j]
-                    tot_sums[frame_nb][ts] += 1
+        # frames which come from the same timestamp in the same file.
+        n_frames = envelope_batch.shape[0]
+        frame_length = self.cut_window_length
+        for i in range(n_frames):
+            frame_ts = batch_timestamps[i]
+            for j in range(frame_length):
+                file_nb, ori_ts = frame_ts[j]
+                if ori_ts > -1:                     
+                    # -1 marks the zeros that have been added to fit the window size
+                    # during the feature generation, hence the values are ignored.
+                    envelopes[file_nb][ori_ts] += envelope_batch[i][j]
+                    tot_sums[file_nb][ori_ts] += 1
         
-        # compute the mean of values
+        # compute the mean of the values.
         for k in range(n_files):
             envelopes[k] =  envelopes[k] / tot_sums[k]
         
@@ -193,7 +204,7 @@ class DataProcessing():
 
 def scaled_mel_filters(sample_rate, n_fft, n_mel_filters, fmin, fmax):
     """
-    Determines the matrix for a mel_filters-filterbank and scales it for each
+    Determine the matrix for a mel_filters-filterbank and scales it for each
     filter values to sum up to 1.
     
     Parameters
@@ -207,19 +218,18 @@ def scaled_mel_filters(sample_rate, n_fft, n_mel_filters, fmin, fmax):
     fmin: float
         Lowest frequency as a fraction of sample rate.
     fmax: float
-        highest frequency as a fraction of sample rate.
+        Highest frequency as a fraction of sample rate.
     
     Returns
     -------
     mel_filters_scaled : ndarray
-        2D array representing the mel_filters transform matrix.
+        2D, array representing the mel_filters transform matrix.
     """
 
     mel_filters = filters.mel(sample_rate, n_fft, n_mel_filters, fmin, fmax, 1)
     
     M = []
     for row in mel_filters:
-        row = list(row)
         m = min(x for x in row if x > 0)
         row_normalized = row / m
         row_scaled = row_normalized / row_normalized.sum()
@@ -229,18 +239,18 @@ def scaled_mel_filters(sample_rate, n_fft, n_mel_filters, fmin, fmax):
     return mel_filters_scaled
 
 
-def generate_features_frames(audio_files, window_length, window_step,
-                             sample_rate=16000, use_spec_sub=False):
+def generate_features(audio_files, window_length, window_step,
+                      sample_rate=16000, speech_enhance=False):
     """
-    Determines the energy and MFCCs of each signal.
+    Determine the energy and MFCCs of each signal.
     
     Remark: in the original code, the energy is computed but never used. Here 
-    it is also computed as might be used as additional features.
+    it is also computed as it might be used as additional features.
     
     Parameters
     ----------
-    audio_files: list
-        List of the audio files (str) to process.
+    audio_files : list
+        List of the paths to the audio files to process.
     window_length: int
         Length of the sliding window as a fraction of the sample rate.
     window_step: int
@@ -248,16 +258,16 @@ def generate_features_frames(audio_files, window_length, window_step,
     sample_rate: int
         Sample rate the audio files should have.
         Defaults to 16000.
-    use_spec_sub: boolean
-        Use spectral subtraction or not.
+    speech_enhance: boolean
+        Use speech enhancing. Current function slows process.
         Defaults to False.
     
     Returns
     -------
     E : list
-        List of energy array per file.
+        List of the energy arrays of the audio files.
     F : list
-        List of MFCCs matrices (2D array) per file.
+        List of the MFCCs frames (2D array) of the audio files.
     """
     
     window_length = round(window_length * sample_rate)
@@ -275,35 +285,40 @@ def generate_features_frames(audio_files, window_length, window_step,
     while i < n_files:
         f = audio_files[i]
         signal, f_sample_rate = sf.read(f)
-        s_length = len(signal)
+        signal_len = len(signal)
         
         if f_sample_rate != sample_rate:
             signal = core.resample(signal, f_sample_rate, sample_rate)
             f_sample_rate = sample_rate
         
+        #if speech_enhance:
+        #    signal = logmmse(signal, sample_rate)[0]
+        #    signal_len = len(signal)
+        
         # add 0s at both sides of the signal
         signal = np.concatenate((signal, [0] * (window_length // 2)))
         signal = np.concatenate(([0] * (window_length // 2), signal))
 
-        # TODO: add spectral subtraction if possible
+        # TODO: add spectral subtraction if possible. For now it is the logmmse
+        # algo as I did not find an equivalent for specsub.m in Python.
         
         # slide window over signal and compute energy and MFFCs at each step
-        n_windows = s_length // window_step + 1
-        signal_mfcc = np.zeros((n_windows, mel_filters.shape[0]))
+        n_windows = signal_len // window_step + 1
+        signal_mfccs = np.zeros((n_windows, mel_filters.shape[0]))
         signal_energy = np.zeros(n_windows)
         
         j = 0
-        for i_start in range(0, s_length, window_step):
-            frames = signal[i_start:i_start + window_length] * window_hamming
-            fft_magnitude = np.abs(np.fft.rfft(frames))
-            mfcc = 20 * np.log10(np.matmul(mel_filters, fft_magnitude))
+        for i_start in range(0, signal_len, window_step):
+            window = signal[i_start:i_start + window_length] * window_hamming
+            fft_magnitude = np.abs(np.fft.rfft(window))
+            mfccs = 20 * np.log10(np.matmul(mel_filters, fft_magnitude))
             
-            signal_mfcc[j, :] = mfcc
+            signal_mfccs[j, :] = mfccs
             signal_energy[j] = sum(fft_magnitude)
             j += 1
         
         E.append(signal_energy)
-        F.append(signal_mfcc)
+        F.append(signal_mfccs)
         
         i += 1
         pbar.update(1)
@@ -313,17 +328,17 @@ def generate_features_frames(audio_files, window_length, window_step,
     return E, F
 
 
-def cut_features(features_frames, window_length, window_step, meme, devi):
+def cut_features(files_features, window_length, window_step, meme, devi):
     """
-    Cut the file's features frames into batch of equal size that can be
-    processed by the BLSTM network. This is done because the BLSTM envelope
-    estimator needs the input batch to be equally sized.
-    The timestamps and original frames length are kept to reconstruct the 
-    results of the BLSTM.
+    Cut the files' features into a batch of overlapping frames of equal size 
+    that can be processed by the BLSTM network. This is done because the BLSTM 
+    envelope estimator needs the input batch to be equally sized.
+    The timestamp and filenumber of each feature column are kept to reconstruct
+    the results of the BLSTM.
     
     Parameters
     ----------
-    features_frames : list
+    files_features : list
         List of MFCCs matrices (2D array) per file.
     window_length : int
         Length of the sliding window.
@@ -336,31 +351,31 @@ def cut_features(features_frames, window_length, window_step, meme, devi):
         
     Returns
     -------
-    features_batch : ndarray
+    feature_batch : ndarray
         3D array of equally sized batch of features.
     timestamps : ndarray
         3D array of the timestamps and frame numbers of each value in the
         batch.
-    ori_frames_length: ndarray
+    files_length: ndarray
         1D array containing the lengths of the original features frames.
     """
     
     # join every file's features matrix together in one matrix
-    tot_features = np.concatenate(features_frames)
+    tot_features = np.concatenate(files_features)
     tot_length = len(tot_features)
     
-    # timestamps keeps track of the number of the origin feature frame and the
-    # timestamps of the features
+    # timestamps keeps track of the number of the origin file and the
+    # timestamp of the feature column
     timestamps = np.zeros((tot_length, 2), dtype=int)
-    ori_frames_length = np.zeros(len(features_frames), dtype=int)
-    frame_nb = 0
+    files_length = np.zeros(len(files_features), dtype=int)
+    file_nb = 0
     l = 0
-    for f in features_frames:
-        frame_len = len(f)
-        ori_frames_length[frame_nb] = frame_len
+    for frame in files_features:
+        frame_len = len(frame)
+        files_length[file_nb] = frame_len
         for i in range(l, l+frame_len):
-            timestamps[i] = (frame_nb, i-l)
-        frame_nb += 1
+            timestamps[i] = (file_nb, i-l)
+        file_nb += 1
         l += frame_len
     
     # apply meme and devi corrections to features (not sure what this is for)
@@ -370,27 +385,25 @@ def cut_features(features_frames, window_length, window_step, meme, devi):
     # add zeros if the length is not a multiple of the step's size
     excess = tot_length % window_step
     if excess != 0:
-        tot_features = np.concatenate((tot_features,
-                                       np.zeros((window_length - excess, 24))))
-        timestamps = np.concatenate((timestamps,
-                                       np.full((window_length - excess, 2),
-                                               (frame_nb - 1, -1))))
+        f_excess = np.zeros((window_length - excess, 24))
+        tot_features = np.concatenate((tot_features, f_excess))
+        ts_excess = np.full((window_length - excess, 2), (file_nb-1, -1))
+        timestamps = np.concatenate((timestamps, ts_excess))
         tot_length = len(tot_features)
     
-    # slide window over total_features and append it to features_batch at each step
-    n_batch = ((tot_length - window_length) // window_step) + 1
-    features_batch = np.zeros((n_batch, window_length, 24))
-    batch_timestamps = np.zeros((n_batch, window_length, 2), dtype=int)
+    # slide window over total_features and append it to feature_batch at each step
+    n_frames = (tot_length - window_length)//window_step + 1
+    feature_batch = np.zeros((n_frames, window_length, 24))
+    batch_timestamps = np.zeros((n_frames, window_length, 2), dtype=int)
     k = 0
     for i_start in range(0, tot_length - window_length + window_step, window_step):
-        features_batch[k, :, :] = tot_features[i_start:i_start + window_length, :]
-        batch_timestamps[k, :] = timestamps[i_start:i_start + window_length, :]
+        feature_batch[k] = tot_features[i_start:i_start + window_length, :]
+        batch_timestamps[k] = timestamps[i_start:i_start + window_length, :]
         k += 1
     
-    features_batch[np.isneginf(features_batch)] = 0
-    features_batch[features_batch == np.inf] = 0
-    features_batch[features_batch == np.NaN] = 0
+    feature_batch[np.isneginf(feature_batch)] = 0
+    feature_batch[feature_batch == np.inf] = 0
+    feature_batch[feature_batch == np.NaN] = 0
 
-    # TODO: divide into multiple files if needed
-    
-    return features_batch, batch_timestamps, ori_frames_length
+    return feature_batch, batch_timestamps, files_length
+

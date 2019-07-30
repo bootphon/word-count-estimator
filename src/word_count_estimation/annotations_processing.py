@@ -4,7 +4,7 @@ Module to process the annotations files (.eaf).
 
 It contains:
 
-    * eaf2txt - returns a .txt containing timestamps and transcription from an
+    * eaf2txt - returns a .txt containing timestamps and transcriptions from an
     annotation file.
     * enrich_txt - enriches the .txt file by adding information at each line.
     * count_annotations_words - counts the number of "seen" words, and real number
@@ -18,13 +18,12 @@ import numpy as np
 import soundfile as sf
 import pympi as pmp
 import argparse
-import os
+import shutil
 import glob
 import subprocess
-import sys
 
 
-def eaf2txt(path_to_eaf, output_folder):
+def eaf2txt(eaf_file, output_folder):
     """
     Convert an eaf file to the txt format by extracting the onset, offset, ortho,
     and the speaker tier.
@@ -33,7 +32,7 @@ def eaf2txt(path_to_eaf, output_folder):
 
     Parameters
     ----------
-    path_to_eaf : str
+    eaf_file : str
         Path to the eaf file.
     output_folder : str
         Path to the output directory. 
@@ -41,12 +40,12 @@ def eaf2txt(path_to_eaf, output_folder):
     Write a txt whose name is the same than the eaf's one in output_folder
     """
 
-    basename = os.path.splitext(os.path.basename(path_to_eaf))[0]
+    basename = os.path.splitext(os.path.basename(eaf_file))[0]
     output_path = os.path.join(output_folder, basename + '.txt')
     
     with open(output_path, 'w') as output_file:
 
-        EAF = pmp.Elan.Eaf(path_to_eaf)
+        EAF = pmp.Elan.Eaf(eaf_file)
         tiers = EAF.tiers
         for tier in tiers:
             
@@ -71,39 +70,39 @@ def eaf2txt(path_to_eaf, output_folder):
     return output_path
 
 
-def enrich_txt(path_to_txt, path_to_script):
+def enrich_txt(txt_file, script_path):
     """"
-    Enriches the .txt file by syllabifying the transcriptions, counting the
+    Enriches the .txt file by syllabifying the transcriptions and counting the
     number of syllables and words.
     
     Parameters
     ----------
-    path_to_txt : str
+    txt_file : str
         Path to the .txt file to be enriched.
-    path_to_script : str
-        Path to scripts in charge of enriching the file.
+    script_path : str
+        Path to script in charge of enriching the file.
 
     Returns
     -------
-    entxt_path : str
+    enrich_file : str
         Path to the enriched file.
     """
 
-    cmd = "{} {} {}_enriched.txt spanish".format(path_to_script, path_to_txt,
-                                                 path_to_txt[:-4])
+    cmd = "{} {} {}_enriched.txt spanish".format(script_path, txt_file,
+                                                 txt_file[:-4])
     subprocess.call(cmd, shell=True)
-    os.remove(path_to_txt)
-    entxt_path = "{}_enriched.txt".format(path_to_txt[:-4])
+    os.remove(txt_file)
+    enrich_file = "{}_enriched.txt".format(txt_file[:-4])
     
-    return entxt_path
+    return enrich_file
 
 
-def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
+def count_annotations_words(enrich_file, rttm_file, audio_file, chunks_dir):
     """
     This function takes an enriched.txt file and .rttm file and measures the
     number of words and syllables in each of the SAD segments defined in the
     rttm file.
-    It also extracts .wav files corresponding to these SAD segments from the
+    It also extracts the .wav files corresponding to these SAD segments from the
     original audio file.
 
     This is function has a second version see the original function on the
@@ -117,8 +116,8 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
         Path to the SAD file (.rttm).
     audio_file : str
         Path to the audio file (.wav).
-    save_dir : str
-        Path to the output directory.
+    chunks_dir : str
+        Path to the directory where to store the SAD wav chunks.
 
     Returns
     -------
@@ -172,9 +171,6 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
     onset = onset/1000
     offset = offset/1000
 
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
     tot_words = sum(wordcount)
     tot_syls = sum(sylcount)
 
@@ -182,12 +178,7 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
     SAD_onsets = np.array([])
     SAD_offsets = np.array([])
 
-    mainWav, rate = sf.read(audio_file)
     wavList = []
-
-    chunks_dir = os.path.join(save_dir, "wav_chunks")
-    if not os.path.exists(chunks_dir):
-        os.makedirs(chunks_dir)
 
     with open(rttm_file, 'rt') as f:    
         reader = csv.reader(f, delimiter=' ')
@@ -198,10 +189,9 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
             SAD_offsets = np.append(SAD_offsets, SAD_onset+SAD_offset)
             wav_chunk_path = "{}/{}_{}.wav".format(chunks_dir, filename,
                                                    str(int(SAD_onset)*1000).zfill(8))
-            chunk_start = int(np.floor(SAD_onset*rate))+1
-            chunk_end = int(np.floor(float(SAD_onset*rate+SAD_offset*rate)))-1
-            wav_chunk = mainWav[chunk_start:chunk_end]
-            sf.write(wav_chunk_path, wav_chunk, rate)
+            cmd = ['sox', audio_file, wav_chunk_path,
+                   'trim', str(SAD_onset), str(SAD_offset)]
+            subprocess.call(cmd)
             wavList.append(wav_chunk_path)
 
     # Count only words that come from segments of the SAD that fully overlap
@@ -297,12 +287,13 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, save_dir):
     return tot_words, tot_syls, SAD_segments_words, SAD_segments_syllables, wavList
 
 
-def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
+def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_path):
     """
     Process all annotations files in a given dir using the previous functions:
-        - cut the SAD segments
-        - count the number of words in those segments in annotations
-        - compute alpha
+        1- retrieve information from the annotations
+        2- cut the SAD segments
+        3- count the number of words in those segments in annotations
+        4- compute alpha
 
     Parameters
     ----------
@@ -312,10 +303,10 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
         Path to the directory of the annotations files.
     rttm_dir : str
         Path to the directory of the SAD files.
-    sad : str
+    sad_name : str
         Name of the SAD program used.
     selcha_script_path : str
-        Path to scripts in charge of enriching the files.
+        Path to script in charge of enriching the files.
 
     Returns
     -------
@@ -323,14 +314,16 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
         List of the word counts of all the segments coming from the files in 
         audio_dir.
     wav_list : list
-        List of the path to those segments (same order as previous list).
+        List of the path to those segments' .wav (same order as previous list).
     alpha : float
         Alpha value, corresponding to the ratio of segments' number of words
         on the real number of words, to correct the error of the SAD when
         predicting later on.
     """
     
-    eaf_files = glob.iglob(os.path.join(eaf_dir, '*.eaf'))
+    eaf_files = glob.glob(os.path.join(eaf_dir, '*.eaf'))
+    if not eaf_files:
+        sys.exit("annotations_processing.py : No annotation file found in {}.".format(eaf_dir))
 
     tot_words = []
     tot_syls = []
@@ -338,32 +331,49 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad, selcha_script_path):
     tot_segments_syls = [] 
     wav_list = []
 
+    chunks_dir = os.path.join(audio_dir, "wav_chunks")
+    if not os.path.exists(chunks_dir):
+        os.makedirs(chunks_dir)
+    else:
+        shutil.rmtree(chunks_dir)
+        os.makedirs(chunks_dir)
+
     # TODO: CHANGE sort key to match naming convention + issue when path contains
     # '_'
     for eaf_path in sorted(eaf_files, key=lambda k : (int(k.split('_')[1]),
                                                       int(k.split('_')[-2]))):
         print("Processing %s" % eaf_path)
+
         txt_path = eaf2txt(eaf_path, eaf_dir)
         enrich_txt_path = enrich_txt(txt_path, selcha_script_path)
-        rttm_name = "{}_{}.rttm".format(sad, os.path.basename(txt_path[:-4]))
+        
+        rttm_name = "{}_{}.rttm".format(sad_name, os.path.basename(txt_path[:-4]))
         rttm_path = os.path.join(rttm_dir, rttm_name)
         audio_name = "{}.wav".format(os.path.basename(txt_path[:-4]))
         audio_path = os.path.join(audio_dir, audio_name)
-        print(rttm_path, audio_path)
+        
+        print("Searching for {} and {}".format(rttm_path, audio_path))
 
         if os.path.isfile(rttm_path):
             if os.path.isfile(audio_path):
                 tw, ts, sw, ss, wl = count_annotations_words(enrich_txt_path, rttm_path,
-                                                             audio_path, audio_dir)
+                                                             audio_path, chunks_dir)
                 tot_words.append((os.path.basename(audio_path)[:-4], tw))
                 tot_syls.append(ts)
                 tot_segments_words.append(sw)
                 tot_segments_syls.append(ss)
                 wav_list.append(wl)
+                os.remove(enrich_txt_path)
             else:
-                print("Missing .wav file for {}".format(eaf_path))
+                print("Missing .wav file for {}.".format(eaf_path))
+                print("Ignoring the file.")
         else:
-            print("Missing .rttm for {}".format(eaf_path))
+            print("Missing .rttm for {}.".format(eaf_path))
+            print("Ignoring the file.")
+
+    if not tot_segments_words:
+        sys.exit("annotations_processing.py : No correspondence found between" +
+                 " the SAD files and audio files.")
 
     tot_segments_words = np.concatenate(tot_segments_words)
     wav_list = np.concatenate(wav_list)

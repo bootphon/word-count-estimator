@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-import statsmodels.api as sm
+from statsmodels.api import OLS, add_constant
 from math import sqrt
 import sys
 
@@ -26,9 +26,8 @@ class WordCountEstimator:
     threshold : float
         Minimum value separating a maximum and its left neighbour for this 
         maximum to be considered a peak.
-    M : float
-        Coefficients of the linear mapping between the nuclei counts and the
-        word counts.
+    lin_reg : <statsmodels.regression.linear_model>
+        OLS model to mapping the nuclei count to the word count.
     alpha : float
         Recall of the SAD to readjust M.
     additional_features : list
@@ -48,7 +47,7 @@ class WordCountEstimator:
         Predicts the word counts for a given list of syllable envelopes.
     """
     
-    def __init__(self, threshold=0.5, M=np.array([0,1]), alpha=1, additional_features=[]):
+    def __init__(self, threshold=0.5, alpha=1, additional_features=[]):
         """
         Parameters
         ----------
@@ -66,7 +65,7 @@ class WordCountEstimator:
         """
         
         self.threshold = threshold
-        self.M = M
+        self.lin_reg = OLS([1], [1]).fit()
         self.alpha = alpha
         self.additional_features = additional_features
         
@@ -75,8 +74,23 @@ class WordCountEstimator:
         Print a summary of the model.
         """
         
+        print("Summary of WCE model:")
         for attr in self.__dict__:
-            print(attr, self.__dict__[attr])
+            if attr != "lin_reg":
+                print(attr, self.__dict__[attr])
+        print("lin_reg coefficients", self.__dict__["lin_reg"].params)
+
+    def save_model(self, model_file):
+        """
+        Save the model to a given file.
+        
+        Parameters
+        ----------
+        model_file : str
+            Path to the model's file.
+        """
+
+        pickle.dump(self.__dict__, open(model_file, 'wb'))
     
     def load_model(self, model_file): 
         """
@@ -99,7 +113,7 @@ class WordCountEstimator:
         
         Training works as follows:
             - estimate the number of syllable nuclei per files according to
-            different thresholds and chose the threshold that induces the best
+            different thresholds and chose the threshold that produces the best
             correlation between the estimated number of nuclei and the target
             number of word counts.
             - using the estimated number of nuclei resulting from the optimal
@@ -108,9 +122,9 @@ class WordCountEstimator:
         Parameters
         ----------
         envelopes : ndarray
-            1D array of envelope per file.
+            2D, array of envelope per file.
         target_word_counts : list
-            List of the word counts per file.
+            List of the word count per file.
         model_file: str
             Path of the model file.
         thresholds : list
@@ -136,9 +150,11 @@ class WordCountEstimator:
         # determine best threshold
         corvals = np.zeros(n_thresholds)
         for k in range(n_thresholds):
-            corvals[k] = np.corrcoef(target_word_counts,
-                                     estimated_nuclei_counts[:, k],
-                                     rowvar=False)[0][1]
+            all_zeros = not np.any(estimated_nuclei_counts[:,k])
+            if not all_zeros:
+                corvals[k] = np.corrcoef(target_word_counts,
+                                         estimated_nuclei_counts[:,k],
+                                         rowvar=False)[0][1]
         
         try:
             opti_k = np.nanargmax(corvals)
@@ -153,17 +169,16 @@ class WordCountEstimator:
             X[l, 0] = nuclei_counts[l]
             X[l, 1:] = add_features(envelopes[l], self.additional_features)
         
-        # determine M coefficients by multiple linear regression on X and
-        # target_word_counts
-        X = sm.add_constant(X, has_constant='add')
-        est = sm.OLS(target_word_counts, X).fit()
-        opti_M = est.params
+        # multiple linear regression on X and target_word_counts
+        X = add_constant(X, has_constant='add')
+        self.lin_reg = OLS(target_word_counts, X).fit()
 
-        # readjust M by dividing by alpha: the recall of the SAD
-        opti_M = opti_M / self.alpha
-        
+        # readjust coefficients by dividing by alpha: the recall of the SAD
+        #opti_M = opti_M / self.alpha
+        self.lin_reg.params /= self.alpha
+
         # compute RMSE
-        estimated_word_counts = np.matmul(X, opti_M)
+        estimated_word_counts = self.lin_reg.predict(X)
         a = estimated_word_counts[np.where(target_word_counts > 0)]
         b = target_word_counts[np.where(target_word_counts > 0)]
         RMSE_train = sqrt(np.square(np.mean(((a-b) / b))))*100
@@ -171,9 +186,8 @@ class WordCountEstimator:
         print("Relative RMSE error on training set: {:.2f} per SAD segment".format(RMSE_train))
         
         # save results to a pickle file
-        self.M = opti_M
         self.threshold = opti_threshold
-        pickle.dump(self.__dict__, open(model_file, 'wb'))
+        self.save_model(model_file)
         
         print("WCE training finished successfully.")
         print("Model saved at {}.".format(model_file))
@@ -185,12 +199,12 @@ class WordCountEstimator:
         Parameters
         ----------
         envelopes : ndarray
-            1D array containing the audio files syllable envelopes.
+            2D, array of envelope per file.
             
         Returns
         -------
         word_counts : ndarray
-            1D array containing the word count per audio file/envelope.
+            2D array containing the estimated word count per audio file/envelope.
         """
         
         print("Predicting word counts.")
@@ -202,13 +216,15 @@ class WordCountEstimator:
             n_syl_nuclei = len(peakdet(envelopes[k], self.threshold)[0])
             X[k, 0] = n_syl_nuclei
             X[k, 1:] = add_features(envelopes[k], self.additional_features)
-        X = sm.add_constant(X, has_constant='add')
+        if len(self.lin_reg.params) > 1:
+            X = add_constant(X, has_constant='add')
 
-        word_counts = np.matmul(X, self.M)
-        
+        word_counts = self.lin_reg.predict(X)
+
         word_counts[np.isneginf(word_counts)] = 0
         word_counts[word_counts == np.inf] = 0
         word_counts[word_counts == np.NaN] = 0
+        #word_counts[word_counts < 0] = 0
         
         return word_counts
 
@@ -321,5 +337,8 @@ def add_features(envelope, wanted_features):
     if('sonority_SD_energy' in wanted_features):
         en_sonor_sd = np.std(envelope)
         features.append(en_sonor_sd)
+
+    # TODO: Possibility to add more.
     
     return features
+

@@ -1,7 +1,7 @@
 """Speech Extractor
 
 Module to extract segments of speech from the original wavs and gather the
-results of the WCE on these segments that come from the same file.
+results of the WCE on the segments that come from the same file.
 
 The module contains the following functions:
 
@@ -26,7 +26,7 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
     ----------
     audio_dir : str
         Path to the directory containing the audio files (.wav).
-    rtm_dir : str
+    rttm_dir : str
         Path to the directory containing the SAD files (.rttm).
     sad_name : str
         Name of the SAD algorithm used.
@@ -35,6 +35,8 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
     -------
     wav_list : list
         List containing the path to the wav segments resulting from the trim.
+    out_dir : str
+        Directory for the extracted .wav segments.
     """
 
     wav_list = []
@@ -48,11 +50,14 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
         os.mkdir(out_dir)
     
     for wav in wav_files:
+
         sad_filename = "{}_{}.rttm".format(sad_name, os.path.basename(wav)[:-4])
         sad = os.path.join(rttm_dir, sad_filename)
         if not os.path.isfile(sad):
             print("The SAD file %s has not been found." % sad)
-            sys.exit(1)
+            print("Ignoring the file.")
+            #sys.exit(1)
+            continue
 
         with open(sad, 'r') as rttm:
             i = 0
@@ -73,10 +78,14 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
                     wav_list.append(output)
                     i += 1
 
+    if not wav_list:
+        sys.exit(("speech_extractor.py : No correspondence found between the SAD" +
+                  " files and audio files.").format())
+
     return wav_list
 
 
-def retrieve_files_word_counts(word_counts, wav_list, output):
+def retrieve_files_word_counts(word_counts, wav_list, output_path):
     """
     Retrieve the word count for each file from the word count for the wav 
     chunks.
@@ -87,8 +96,8 @@ def retrieve_files_word_counts(word_counts, wav_list, output):
         List of the word counts per wav chunk.
     wav_list : list
         List of paths to the wav chunks.
-    output : str
-        Path to the output file where to store the results.
+    output_path : str
+        Path to the output_path file where to store the results.
     """
 
     files = []
@@ -108,10 +117,10 @@ def retrieve_files_word_counts(word_counts, wav_list, output):
         files_word_counts.append((f, wc))
 
     # TODO: CHANGE sort key to match naming convention
-    with open(output, 'w') as out:
+    with open(output_path, 'w') as out:
         csvwriter = csv.writer(out, delimiter=';')
         for row in sorted(files_word_counts, key=lambda k: (int(k[0].split('_')[1]),
                                                             int(k[0].split('_')[-2]))):
             csvwriter.writerow(row)
-
+    print("Output saved at: {}.".format(output_path))
 

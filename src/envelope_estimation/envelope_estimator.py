@@ -12,12 +12,14 @@ class EnvelopeEstimator:
     """
     BLSTM model for syllable envelope estimation.
     
-    The model takes sequences of 24 MFCCs as input.
+    The model takes frames of MFCCs as input.
     The output of the BLSTM network is the activation of the output node for each
-    row of MFFCs presented to the network in the input sequence (syllable envelope).
+    column of MFFCs presented to the network in the input sequence. This output 
+    represents the syllable probabilty. Once the whole signal is processed it 
+    gives the syllable probability envelope.
 
-    Remark: This model is not yet trainable as we do not have training data, hence the 
-    default model made by Okko Räsänen is always used.
+    Remark: This model is not yet trainable as we do not have training data, 
+    hence the default model made by Okko Räsänen is always used.
     
     Attributes
     ----------
@@ -33,10 +35,10 @@ class EnvelopeEstimator:
     load_model(model_file)
         Load model from a file.
     train(X_train, y_train, model_file)
-        Trains the model given the input 24 MFCCs sequences and their respective
-        targeted output syllable envelopes.
+        Train the model given the input MFCCs frames and their respective
+        target output syllable envelopes.
     predict(X)
-        Predict the syllable envelopes on a batch of MFCCs sequences.
+        Predict the syllable envelopes on a batch of MFCCs frames.
     """
     
     def __init__(self):
@@ -93,20 +95,20 @@ class EnvelopeEstimator:
         
         try:
             self.model = load_model(model_file)
-        except:
-            print("Path to model is wrong.")
+        except IOError:
+            print("Path to envelope estimation model is wrong.")
     
     def train(self, X_train, y_train, model_file="../models/trained_model.h5"):
         """
-        Trains the model given the input 24 MFCCs sequences and their respective
+        Trains the model given the input MFCCs frames and their respective
         targeted output syllable envelopes.
         
         Parameters
         ----------
         X_train : ndarray
-            3D array, batch of MFCCs sequences.
+            3D array, batch of MFCCs frames.
         y_train : ndarray
-            2D array, targeted output syllable envelopes.
+            2D array, targeted output syllable envelopes of the frames.
         """
         
         print("Training syllable envelope estimator model.")
@@ -130,17 +132,17 @@ class EnvelopeEstimator:
         
     def predict(self, X):
         """
-        Predict the syllable envelopes on a batch of MFCCs sequences.
+        Predict the syllable envelopes on a batch of MFCCs frames.
         
         Parameters
         ----------
         X : ndarray
-            3D array, batch of MFCCs sequences.
+            3D array, batch of MFCCs frames.
             
         Returns
         -------
-        envelopes_batch : ndarray
-            2D array, output syllable envelopes for each sequence.
+        envelope_batch : ndarray
+            2D array, output syllable envelopes of the frames.
         """
         
         print("Predicting envelopes batch.")
@@ -149,9 +151,9 @@ class EnvelopeEstimator:
             new_shape = [X.shape[0], X.shape[1], X.shape[2], 1]
             X = np.reshape(X, new_shape)
         
-        envelopes_batch = self.model.predict_on_batch(X)
-        if envelopes_batch.ndim > 2:
-            envelopes_batch = envelopes_batch[:,:,0]
+        envelope_batch = self.model.predict_on_batch(X)
+        if envelope_batch.ndim > 2:
+            envelope_batch = envelope_batch[:,:,0]
 
         print("Envelopes batch predicted successfully.")
-        return envelopes_batch
+        return envelope_batch

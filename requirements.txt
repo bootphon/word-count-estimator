@@ -5,3 +5,4 @@ statsmodels
 pickle
 tqdm
 python-dotenv
+keras
