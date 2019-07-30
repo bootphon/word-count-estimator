@@ -41,6 +41,8 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
 
     wav_list = []
     wav_files = glob.glob(audio_dir + "/*.wav")
+    if not wav_files:
+        sys.exit(("speech_extractor.py : No audio files found in {}".format(audio_dir)))
 
     out_dir = os.path.join(audio_dir, "wav_chunks_predict")
     if not os.path.exists(out_dir):
@@ -48,16 +50,13 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
     else:
         shutil.rmtree(out_dir)
         os.mkdir(out_dir)
-    
+
     for wav in wav_files:
 
         sad_filename = "{}_{}.rttm".format(sad_name, os.path.basename(wav)[:-4])
         sad = os.path.join(rttm_dir, sad_filename)
         if not os.path.isfile(sad):
-            print("The SAD file %s has not been found." % sad)
-            print("Ignoring the file.")
-            #sys.exit(1)
-            continue
+            sys.exit("The SAD file %s has not been found." % sad)
 
         with open(sad, 'r') as rttm:
             i = 0
@@ -68,7 +67,6 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
                 fields = ' '.join(fields.split())
                 fields = fields.split(' ')
                 onset, duration, activity = float(fields[3]), float(fields[4]), fields[7]
-                offset = onset+duration
                 if activity == 'speech':
                     basename = os.path.basename(wav).split('.wav')[0]
                     output = os.path.join(out_dir, '_'.join([basename, str(i)])+'.wav')
@@ -78,16 +76,12 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
                     wav_list.append(output)
                     i += 1
 
-    if not wav_list:
-        sys.exit(("speech_extractor.py : No correspondence found between the SAD" +
-                  " files and audio files.").format())
-
     return wav_list
 
 
 def retrieve_files_word_counts(word_counts, wav_list, output_path):
     """
-    Retrieve the word count for each file from the word count for the wav 
+    Retrieve the word count for each file from the word count for the wav
     chunks.
 
     Parameters
@@ -102,7 +96,7 @@ def retrieve_files_word_counts(word_counts, wav_list, output_path):
 
     files = []
     files_word_counts = []
-    
+
     for f in wav_list:
         filepath = '_'.join(f.split('_')[:-1])
         filename = os.path.basename(filepath)
@@ -110,7 +104,7 @@ def retrieve_files_word_counts(word_counts, wav_list, output_path):
             files.append(filename)
 
     for f in files:
-        indices = [x for x,y in enumerate(wav_list) if f in y]
+        indices = [x for x, y in enumerate(wav_list) if f in y]
         wc = 0
         for i in indices:
             wc += word_counts[i]

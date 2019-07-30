@@ -13,8 +13,6 @@ optional arguments:
 """
 
 import argparse
-import numpy as np
-import glob
 import os
 import csv
 import shutil
@@ -27,7 +25,7 @@ from word_count_estimation import WordCountEstimator
 
 
 # To not use GPU for envelope estimation.
-os.environ["CUDA_VISIBLE_DEVICES"]="-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 load_dotenv("./.env")
@@ -52,7 +50,7 @@ def train(args):
       -r REF_PATH, --ref_path REF_PATH
                             path to the output reference file containing the word
                             counts of each audio file
-    """ 
+    """
 
     if not os.path.exists(args.audio_dir):
         raise IOError("Audio directory does not exist.")
@@ -67,28 +65,28 @@ def train(args):
     wce_model_name = os.path.basename(args.wce_model_path)
     print("Envelope estimation model used: {}".format(env_model_name))
     print("The resulting wce model will be saved to {}".format(wce_model_name))
-   
+
     selcha_script = os.getenv("SELCHA_SCRIPT_PATH")
     tot_files_words, tot_seg_words, wav_list, alpha = \
             process_annotations(args.audio_dir, args.annotations_dir,
                                 args.rttm_dir, args.SAD_name, selcha_script)
-    
+
     audio_files = wav_list
     target_counts = tot_seg_words
     dp = DataProcessing()
     feature_batch, batch_timestamps, files_length = dp.generate_features_batch(audio_files)
-    
+
     env_estimator = EnvelopeEstimator()
     env_estimator.load_model(args.env_model_path)
     envelope_batch = env_estimator.predict(feature_batch)
     envelopes = dp.reconstruct_envelopes(envelope_batch,
                                          batch_timestamps,
                                          files_length)
-    
+
     wce = WordCountEstimator()
     wce.alpha = alpha
     wce.train(envelopes, target_counts, model_file=args.wce_model_path)
-    
+
     if args.ref_path:
         if not os.path.exists(os.path.dirname(args.ref_path)):
             raise IOError("Output directory does not exist.")
@@ -96,7 +94,7 @@ def train(args):
             csvwriter = csv.writer(ref, delimiter=';')
             for row in tot_files_words:
                 csvwriter.writerow(row)
-    
+
     chunks_dir = os.path.dirname(audio_files[0])
     shutil.rmtree(chunks_dir)
 
@@ -137,17 +135,17 @@ def predict(args):
     wce_model_name = os.path.basename(args.wce_model_path)
     print("Envelope estimation model used: {}".format(env_model_name))
     print("WCE model used: {}".format(wce_model_name))
-    
+
     audio_files = extract_speech(args.audio_dir, args.rttm_dir, args.SAD_name)
     dp = DataProcessing()
-    X, timestamps, ori_frames_length = dp.generate_features_batch(audio_files)
-    
+    feature_batch, timestamps, files_length = dp.generate_features_batch(audio_files)
+
     env_estimator = EnvelopeEstimator()
     env_estimator.load_model(args.env_model_path)
-    envelopes_batch = env_estimator.predict(X)
+    envelopes_batch = env_estimator.predict(feature_batch)
     envelopes = dp.reconstruct_envelopes(envelopes_batch,
                                          timestamps,
-                                         ori_frames_length)
+                                         files_length)
 
     wce = WordCountEstimator()
     wce.load_model(args.wce_model_path)
@@ -155,23 +153,23 @@ def predict(args):
 
     retrieve_files_word_counts(word_counts, audio_files, args.output)
 
-    chunks_dir = os.path.dirname(audio_files[0])
-    shutil.rmtree(chunks_dir)
+    #chunks_dir = os.path.dirname(audio_files[0])
+    #shutil.rmtree(chunks_dir)
 
 
 def main():
     """
     Main function in charge of parsing the command.
-    """    
-    
-    env_path="../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropout_v2.h5"
-    default_wce_path="../models/word_count_estimator/default_model.pickle"
-    adapted_wce_path="../models/word_count_estimator/adapted_model.pickle"
-    
+    """
+
+    env_path = "../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropout_v2.h5"
+    default_wce_path = "../models/word_count_estimator/default_model.pickle"
+    adapted_wce_path = "../models/word_count_estimator/adapted_model.pickle"
+
     parser = argparse.ArgumentParser(description="Word count estimation model.")
-    
+
     subparsers = parser.add_subparsers(help='desired mode')
-    
+
     parser_train = subparsers.add_parser('train', help='train mode')
     parser_train.add_argument('audio_dir',
                               help='directory where the audio files are stored')
@@ -190,7 +188,7 @@ def main():
                               help='path to the output reference file containing\
                               the word counts of each audio file')
     parser_train.set_defaults(func=train)
-    
+
     parser_predict = subparsers.add_parser('predict', help='predict mode')
     parser_predict.add_argument('audio_dir',
                                 help='directory where the audio files are stored')
@@ -205,7 +203,7 @@ def main():
                                 help='path to the word count estimator model file',
                                 default=default_wce_path)
     parser_predict.set_defaults(func=predict)
-    
+
     args = parser.parse_args()
     try:
         func = args.func
