@@ -1,11 +1,13 @@
+import os
 import numpy as np
-
+from dotenv import load_dotenv
 from keras.models import Model, load_model
 from keras.layers import Input, Dense, LSTM, add
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 
-DEFAULT_MODEL = "../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropout_v2.h5"
+load_dotenv(".env")
+DEFAULT_MODEL = os.getenv("DEFAULT_ENV_EST")
 
 
 class EnvelopeEstimator:

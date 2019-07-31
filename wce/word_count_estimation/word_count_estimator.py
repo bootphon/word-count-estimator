@@ -1,4 +1,5 @@
 import pickle
+import os
 from math import sqrt
 import sys
 from statsmodels.api import OLS, add_constant

@@ -19,11 +19,11 @@ import shutil
 import sys
 from dotenv import load_dotenv
 
-from envelope_estimation import DataProcessing, EnvelopeEstimator
-from word_count_estimation.annotations_processing import process_annotations
-from word_count_estimation.speech_extractor import extract_speech, retrieve_files_word_counts
-from word_count_estimation import WordCountEstimator
-
+from wce.envelope_estimation.data_processing import DataProcessing
+from wce.envelope_estimation.envelope_estimator import EnvelopeEstimator
+from wce.word_count_estimation.annotations_processing import process_annotations
+from wce.word_count_estimation.speech_extractor import extract_speech, retrieve_files_word_counts
+from wce.word_count_estimation.word_count_estimator import WordCountEstimator
 
 # To not use GPU for envelope estimation.
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -154,8 +154,8 @@ def predict(args):
 
     retrieve_files_word_counts(word_counts, audio_files, args.output)
 
-    #chunks_dir = os.path.dirname(audio_files[0])
-    #shutil.rmtree(chunks_dir)
+    chunks_dir = os.path.dirname(audio_files[0])
+    shutil.rmtree(chunks_dir)
 
 
 def main():
@@ -163,9 +163,9 @@ def main():
     Main function in charge of parsing the command.
     """
 
-    env_path = "../models/envelope_estimator/BLSTM_fourlang_60_60_augmented_dropout_v2.h5"
-    default_wce_path = "../models/word_count_estimator/default_model.pickle"
-    adapted_wce_path = "../models/word_count_estimator/adapted_model.pickle"
+    env_path = os.getenv("DEFAULT_ENV_EST")
+    default_wce_path = os.getenv("DEFAULT_WCE")
+    adapted_wce_path = os.getenv("ADAPTED_WCE")
 
     parser = argparse.ArgumentParser(description="Word count estimation model.")
 
@@ -213,6 +213,6 @@ def main():
         sys.exit(0)
     func(args)
 
-
 if __name__ == '__main__':
     main()
+

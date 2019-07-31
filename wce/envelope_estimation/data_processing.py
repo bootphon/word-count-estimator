@@ -1,13 +1,14 @@
 import pickle
+import os
+from dotenv import load_dotenv
 from librosa import filters, core
 import numpy as np
 import soundfile as sf
 from tqdm import tqdm
 #from logmmse import logmmse
 
-
-DEFAULT_PARAMS = "../models/envelope_estimator/default_data_processing_params.pickle"
-
+load_dotenv(".env")
+DEFAULT_PARAMS = os.getenv("DEFAULT_DP_PARAMS")
 
 class DataProcessing():
     """
