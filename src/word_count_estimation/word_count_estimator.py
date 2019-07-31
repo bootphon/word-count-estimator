@@ -38,6 +38,8 @@ class WordCountEstimator:
     -------
     summary()
         Print a summary of the model.
+    save_model(model_file)
+        Save the model to a given file.
     load_model(model_file)
         Load the model from a given file.
     train(envelopes, target_word_counts, thresholds, model_file)

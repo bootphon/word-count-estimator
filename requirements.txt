@@ -1,8 +1,9 @@
-librosa
-numpy
-soundfile
-statsmodels
-pickle
-tqdm
-python-dotenv
-keras
+tqdm==4.28.1
+numpy==1.15.4
+librosa==0.7.0
+pympi_ling==1.69
+SoundFile==0.10.2
+statsmodels==0.9.0
+Keras==2.2.4
+python-dotenv==0.10.3
+tensorflow==1.14.0
