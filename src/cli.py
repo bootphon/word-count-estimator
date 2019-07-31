@@ -16,6 +16,7 @@ import argparse
 import os
 import csv
 import shutil
+import sys
 from dotenv import load_dotenv
 
 from envelope_estimation import DataProcessing, EnvelopeEstimator
@@ -207,8 +208,9 @@ def main():
     args = parser.parse_args()
     try:
         func = args.func
-    except AttributeError:
-        parser.error("too few arguments")
+    except:
+        parser.print_help()
+        sys.exit(0)
     func(args)
 
 
