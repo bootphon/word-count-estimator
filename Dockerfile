@@ -3,11 +3,11 @@ FROM python:3.7-slim-buster
 COPY requirements.txt /
 
 RUN pip install -r /requirements.txt
-RUN apt-get update && apt-get install -y libsndfile1
+RUN apt-get update && apt-get install -y \
+    libsndfile1 \
+    sox
 
-COPY src/ /app
-WORKDIR /app
+COPY ./ /
+WORKDIR /
 
-VOLUME ../results
-
-ENTRYPOINT ["python", "cli.py"]
+ENTRYPOINT ["python", "./cli.py"]

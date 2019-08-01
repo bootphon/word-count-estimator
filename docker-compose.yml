@@ -1,0 +1,16 @@
+version: "3.3"
+
+services:
+    wce:
+        build: .
+        volumes:
+            - type: bind
+              source: ./data
+              target: /data
+            - type: bind
+              source: ./models
+              target: /models
+            - type: volume
+              source: ./results
+              target: /results
+
