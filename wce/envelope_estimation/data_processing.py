@@ -1,9 +1,8 @@
 import pickle
 import os
 from dotenv import load_dotenv
-from librosa import filters, core
+from librosa import filters, load
 import numpy as np
-import soundfile as sf
 from tqdm import tqdm
 #from logmmse import logmmse
 
@@ -285,12 +284,8 @@ def generate_features(audio_files, window_length, window_step,
     i = 0
     while i < n_files:
         f = audio_files[i]
-        signal, f_sample_rate = sf.read(f)
+        signal, sample_rate = load(f, sr=16000)
         signal_len = len(signal)
-
-        if f_sample_rate != sample_rate:
-            signal = core.resample(signal, f_sample_rate, sample_rate)
-            f_sample_rate = sample_rate
 
         #if speech_enhance:
         #    signal = logmmse(signal, sample_rate)[0]

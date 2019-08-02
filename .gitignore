@@ -124,7 +124,7 @@ dmypy.json
 .pyre/
 
 # Data directory
-data/
+data/*
+!data/test_data/
+!data/test_data.txt
 results/
-src/call.sh
-src/cp_noisemes.sh
