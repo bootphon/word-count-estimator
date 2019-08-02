@@ -127,4 +127,3 @@ dmypy.json
 data/*
 !data/test_data/
 !data/test_data.txt
-results/
