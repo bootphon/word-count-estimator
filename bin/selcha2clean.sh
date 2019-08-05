@@ -2,7 +2,6 @@
 # Given a txt file containing the following fields : onset offset transcription receiver speaker_tier (Note that eaf2txt.py generates such kind of files)
 # Returns an enriched version of it by cleaning the transcription field, syllabifying (or phonemizing it), counting the number of words, and the number of syllables
 
-LC_CTYPE=en_EN.utf8
 #########VARIABLES
 #Variables that have been passed by the user
 SELFILE=$1

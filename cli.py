@@ -18,6 +18,7 @@ import csv
 import shutil
 import sys
 from dotenv import load_dotenv
+from tensorflow.python.util import deprecation
 
 from wce.envelope_estimation.data_processing import DataProcessing
 from wce.envelope_estimation.envelope_estimator import EnvelopeEstimator
@@ -27,6 +28,11 @@ from wce.word_count_estimation.word_count_estimator import WordCountEstimator
 
 # To not use GPU for envelope estimation.
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+# To disable tensorflow deprecation warnings.
+deprecation._PRINT_DEPRECATION_WARNINGS = False
+os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
+import logging
+logging.getLogger('tensorflow').disabled = True
 
 
 load_dotenv("./.env")
@@ -174,10 +180,10 @@ def main():
     parser_train = subparsers.add_parser('train', help='train mode')
     parser_train.add_argument('audio_dir',
                               help='directory where the audio files are stored')
-    parser_train.add_argument('annotations_dir',
-                              help='directory where the annotation files are stored')
     parser_train.add_argument('rttm_dir',
                               help='directory where the SAD .rttm files are stored')
+    parser_train.add_argument('annotations_dir',
+                              help='directory where the annotation files are stored')
     parser_train.add_argument('SAD_name', help='name of the SAD used')
     parser_train.add_argument('-e', '--env_model_path',
                               help='path to the syllable envelope estimator model file',
@@ -195,8 +201,8 @@ def main():
                                 help='directory where the audio files are stored')
     parser_predict.add_argument('rttm_dir',
                                 help='directory where the SAD .rttm files are stored')
-    parser_predict.add_argument('SAD_name', help='name of the SAD used')
     parser_predict.add_argument('output', help='path to the word count output .csv file')
+    parser_predict.add_argument('SAD_name', help='name of the SAD used')
     parser_predict.add_argument('-e', '--env_model_path',
                                 help='path to the syllable envelope estimator model file',
                                 default=env_path)

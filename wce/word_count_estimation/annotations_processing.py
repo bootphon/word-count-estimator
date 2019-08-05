@@ -339,8 +339,8 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
 
     # TODO: CHANGE sort key to match naming convention + issue when path contains
     # '_'
-    for eaf_path in sorted(eaf_files, key=lambda k : (int(k.split('_')[1]),
-                                                      int(k.split('_')[-2]))):
+    for eaf_path in sorted(eaf_files, key=lambda k : (int(os.path.basename(k).split('_')[1]),
+                                                      int(os.path.basename(k).split('_')[-2]))):
         print("Processing %s" % eaf_path)
 
         txt_path = eaf2txt(eaf_path, eaf_dir)
