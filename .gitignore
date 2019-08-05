@@ -127,3 +127,4 @@ dmypy.json
 data/*
 !data/test_data/
 !data/test_data.txt
+launch_docker.sh

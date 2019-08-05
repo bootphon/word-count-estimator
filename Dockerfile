@@ -7,7 +7,7 @@ RUN apt-get clean && apt-get update && apt-get install -y \
     libsndfile1 \
     sox
 
-COPY ./ /
-WORKDIR /
+COPY ./ /app
+WORKDIR /app
 
-ENTRYPOINT ["python", "./cli.py"]
+CMD ["python", "./cli.py"]
