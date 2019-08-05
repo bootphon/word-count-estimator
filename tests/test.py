@@ -15,7 +15,7 @@ from wce.word_count_estimation.word_count_estimator import WordCountEstimator
 load_dotenv("../.env")
 env_path = os.getenv("DEFAULT_ENV_EST")
 default_wce_path = os.getenv("DEFAULT_WCE")
-adapted_wce_path = os.getenv("ADAPTED_WCE")
+test_wce_path = os.getenv("TEST_WCE")
 
 
 @pytest.fixture
@@ -42,25 +42,30 @@ def test_untrained_predict(get_envelopes):
 
     wce = WordCountEstimator()
     wce.load_model(default_wce_path)
-    envelopes = get_envelopes[0]
-    word_counts = np.array(wce.predict(envelopes))
+    X = get_envelopes[0]
+    y = np.array(wce.predict(X))
     
-    assert ([10., 7., 9., 1., 4., 8., 7., 6., 5., 9.] == word_counts).all()
+    assert ([10., 7., 9., 1., 4., 8., 7., 6., 5., 9.] == y).all()
 
 
 def test_train_and_predict(get_envelopes):
 
     envelopes, target_counts = get_envelopes
     target_counts = np.array(target_counts)
+    X_train, X_test = envelopes[0:8], envelopes[8:10]
+    y_train, y_test = target_counts[0:8], target_counts[8:10]
     
     wce = WordCountEstimator()
-    wce.train(envelopes, target_counts, model_file=adapted_wce_path)
-    wce.load_model(adapted_wce_path)
-    word_counts = wce.predict(envelopes)
+    wce.train(X_train, y_train, model_file=test_wce_path)
+    wce.load_model(test_wce_path)
+    y_pred = wce.predict(X_test)
 
-    a = word_counts[np.where(target_counts > 0)]
-    b = target_counts[np.where(target_counts > 0)]
+    a = y_pred[np.where(y_test > 0)]
+    b = y_test[np.where(y_test > 0)]
     RMSE = sqrt(np.square(np.mean(((a-b) / b))))*100
+    print("RMSE :", RMSE)
+    print("y_pred", y_pred)
+    print("y_test", y_test)
     
-    assert RMSE < 0.6
+    assert RMSE < 10
 
