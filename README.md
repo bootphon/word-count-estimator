@@ -2,6 +2,7 @@
 
 CLI tool for word count estimation in audio files.
 
+
 ## Installation
 
 - Download the `wce` from gitlab and install the required Python packages using pip:
@@ -14,6 +15,7 @@ CLI tool for word count estimation in audio files.
 
         $ sudo apt-get update && install sox libsndfile1
 
+
 ## Usage
 
 It is possible to use directly the `wce` through the CLI or to run it within a
@@ -23,7 +25,7 @@ docker container.
 
 For a complete list of available options, run:
 
-    python cli.py -h
+        $ python cli.py -h
 
 The tool disposes of two commands: train and predict.
 
@@ -31,18 +33,18 @@ The tool disposes of two commands: train and predict.
     Trains a WCE model on audio files given their respective SAD files and annotation
     files.
 
-      python cli.py train wav_dir sad_dir annotation_dir sad_name -w output_model_file
+        $ python cli.py train wav_dir sad_dir annotation_dir sad_name -w output_model_file
 
     If no model file is indicated, it will be saved to a default file: 
-    adapted_model.pickle.
+    `adapted_model.pickle`.
 
 - **Predict:**  
     Predicts the word counts of audio files given their respective SAD files.
 
-      python cli.py predict wav_dir sad_dir output_file sad_name -w model_file
+        $ python cli.py predict wav_dir sad_dir output_file sad_name -w model_file
 
     If no model file is indicated, the default model will be used: 
-    default_model.pickle.
+    `default_model.pickle`.
 
 ### Docker
 
@@ -56,7 +58,7 @@ Using the provided `Dockerfile`:
 model, run a docker container and mount your data and result directories to the
 intended directories in the container:
 
-        docker run \
+        $ docker run \
           --name wce \
           -v my_data/:/app/data \
           -v my_results/:/app/results \
@@ -79,11 +81,11 @@ To run them:
 
 - Install pytest:
 
-      pip install pytest
+        $ pip install pytest
 
 - And run:
 
-      pytest test/test.py
+        $ pytest test/test.py
 
 
 ## Acknowledgments
