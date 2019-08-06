@@ -94,5 +94,6 @@ venv/
 
 # Data directory
 data/
+results/
 tests/
 *.md

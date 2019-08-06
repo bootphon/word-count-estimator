@@ -1,13 +1,20 @@
 FROM python:3.7-slim-buster
 
-COPY requirements.txt /
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 
-RUN pip install -r /requirements.txt
+WORKDIR /app
+
+COPY requirements.txt ./
+
+RUN pip install -r ./requirements.txt
 RUN apt-get clean && apt-get update && apt-get install -y \
     libsndfile1 \
     sox
 
-COPY ./ /app
-WORKDIR /app
+RUN mkdir ./data ./results
 
-CMD ["python", "./cli.py"]
+COPY ./ ./
+
+ENTRYPOINT ["python", "cli.py"]
+CMD ["predict", "data/", "data/", "results/output.csv", "opensmileSad", \
+     "-w", "models/word_count_estimator/adapted_model.pickle"]
