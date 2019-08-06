@@ -20,19 +20,19 @@ import sys
 from dotenv import load_dotenv
 from tensorflow.python.util import deprecation
 
+# To disable tensorflow deprecation warnings.
+import logging
+logging.getLogger('tensorflow').disabled = True
+os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
+
+# To not use GPU for envelope estimation.
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 from wce.envelope_estimation.data_processing import DataProcessing
 from wce.envelope_estimation.envelope_estimator import EnvelopeEstimator
 from wce.word_count_estimation.annotations_processing import process_annotations
 from wce.word_count_estimation.speech_extractor import extract_speech, retrieve_files_word_counts
 from wce.word_count_estimation.word_count_estimator import WordCountEstimator
-
-# To not use GPU for envelope estimation.
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-# To disable tensorflow deprecation warnings.
-deprecation._PRINT_DEPRECATION_WARNINGS = False
-os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
-import logging
-logging.getLogger('tensorflow').disabled = True
 
 
 load_dotenv("./.env")
