@@ -59,7 +59,7 @@ Using the provided `Dockerfile`:
 model, run a docker container and mount your data and result directories to the
 intended directories in the container:
 
-        $ docker run \
+        $ sudo docker run \
           --name wce \
           -v my_data/:/app/data \
           -v my_results/:/app/results \
