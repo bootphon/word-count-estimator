@@ -17,4 +17,4 @@ COPY ./ ./
 
 ENTRYPOINT ["python", "cli.py"]
 CMD ["predict", "data/", "data/", "results/output.csv", "opensmileSad", \
-     "-w", "models/word_count_estimator/adapted_model.pickle"]
+     "-w", "models/word_count_estimator/trained_on_all_pilot.pickle"]
