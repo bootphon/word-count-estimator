@@ -64,7 +64,7 @@ intended directories in the container:
           -v my_data/:/app/data \
           -v my_results/:/app/results \
           wce
-    Your data folder must contain the audio files and their respective SAD files.
+    Your data folder must contain the audio files and their respective SAD files.  
     When the process is done, `output.csv` will be available in `my_results/`.
 
 - For any other command, the arguments will need to be specified and the volumes
