@@ -11,9 +11,10 @@ CLI tool for word count estimation in audio files.
         $ cd wce
         $ pip install requirements.txt
 
-- Install the external dependencies SoX and libsndfile1. On Debian/Ubuntu run:
+- Install the external dependencies Perl, SoX and libsndfile1. On Debian/Ubuntu
+run:
 
-        $ sudo apt-get update && install sox libsndfile1
+        $ sudo apt-get update && install perl sox libsndfile1
 
 
 ## Usage
@@ -68,6 +69,19 @@ intended directories in the container:
 - For any other command, the arguments will need to be specified and the volumes
 adapted. For instance to use the train command, a `models` volume will need to be
 specified.
+
+
+## Input data format
+
+Currently the WCE only supports certain formats:
+- Audio files must be in the .wav format
+- SAD files must be in the [.rttm](https://catalog.ldc.upenn.edu/docs/LDC2004T12/RTTM-format-v13.pdf)
+and have the following fields:
+
+        SPEAKER fname 1 onset duration <NA> <NA> spkr <NA> 
+
+- Annotation files must be in .eaf and should include speaker tiers CHI, MOT,
+FAT as only those are processed.
 
 
 ## Tests
