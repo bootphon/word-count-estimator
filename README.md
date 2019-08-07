@@ -83,6 +83,14 @@ and have the following fields:
 - Annotation files must be in .eaf and should include speaker tiers CHI, MOT,
 FAT as only those are processed.
 
+SAD files and annotation files must have the same name as the audio file they are
+related to. Moreover SAD file should have the SAD algorithm's name at the front,
+separated with a '_'.
+    
+    myfile.wav
+    sadName_myfile.rttm
+    myfile.eaf
+
 
 ## Tests
 
