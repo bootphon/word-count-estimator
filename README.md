@@ -2,6 +2,7 @@
 
 CLI tool for word count estimation in audio files.
 
+
 ## Installation
 
 - Download the `wce` from gitlab and install the required Python packages using pip:
@@ -10,9 +11,11 @@ CLI tool for word count estimation in audio files.
         $ cd wce
         $ pip install requirements.txt
 
-- Install the external dependencies SoX and libsndfile1. On Debian/Ubuntu run:
+- Install the external dependencies Perl, SoX and libsndfile1. On Debian/Ubuntu
+run:
 
-        $ sudo apt-get update && install sox libsndfile1
+        $ sudo apt-get update && install perl sox libsndfile1
+
 
 ## Usage
 
@@ -23,7 +26,7 @@ docker container.
 
 For a complete list of available options, run:
 
-    python cli.py -h
+        $ python cli.py -h
 
 The tool disposes of two commands: train and predict.
 
@@ -31,18 +34,18 @@ The tool disposes of two commands: train and predict.
     Trains a WCE model on audio files given their respective SAD files and annotation
     files.
 
-      python cli.py train wav_dir sad_dir annotation_dir sad_name -w output_model_file
+        $ python cli.py train wav_dir sad_dir annotation_dir sad_name -w output_model_file
 
     If no model file is indicated, it will be saved to a default file: 
-    adapted_model.pickle.
+    `adapted_model.pickle`.
 
 - **Predict:**  
     Predicts the word counts of audio files given their respective SAD files.
 
-      python cli.py predict wav_dir sad_dir output_file sad_name -w model_file
+        $ python cli.py predict wav_dir sad_dir output_file sad_name -w model_file
 
     If no model file is indicated, the default model will be used: 
-    default_model.pickle.
+    `default_model.pickle`.
 
 ### Docker
 
@@ -56,7 +59,7 @@ Using the provided `Dockerfile`:
 model, run a docker container and mount your data and result directories to the
 intended directories in the container:
 
-        docker run \
+        $ docker run \
           --name wce \
           -v my_data/:/app/data \
           -v my_results/:/app/results \
@@ -66,6 +69,27 @@ intended directories in the container:
 - For any other command, the arguments will need to be specified and the volumes
 adapted. For instance to use the train command, a `models` volume will need to be
 specified.
+
+
+## Input data format
+
+Currently the WCE only supports certain formats:
+- Audio files must be in the .wav format
+- SAD files must be in the [.rttm](https://catalog.ldc.upenn.edu/docs/LDC2004T12/RTTM-format-v13.pdf)
+and have the following fields:
+
+        SPEAKER fname 1 onset duration <NA> <NA> spkr <NA> 
+
+- Annotation files must be in .eaf and should include speaker tiers CHI, MOT,
+FAT as only those are processed.
+
+SAD files and annotation files must have the same name as the audio file they are
+related to. Moreover SAD file should have the SAD algorithm's name at the front,
+separated with a '_'.
+    
+    myfile.wav
+    sadName_myfile.rttm
+    myfile.eaf
 
 
 ## Tests
@@ -79,11 +103,11 @@ To run them:
 
 - Install pytest:
 
-      pip install pytest
+        $ pip install pytest
 
 - And run:
 
-      pytest test/test.py
+        $ pytest test/test.py
 
 
 ## Acknowledgments
