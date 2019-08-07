@@ -39,24 +39,21 @@ load_dotenv("./.env")
 
 def train(args):
     """
-    usage: cli.py train [-h] [-e ENV_MODEL_FILE] [-w WCE_MODEL_FILE] [-r REF_PATH]
-                    audio_dir annotations_dir rttm_dir SAD_name
+    usage: cli.py train [-h] [-e ENV_MODEL_PATH] [-w WCE_MODEL_PATH]
+                        audio_dir rttm_dir annotations_dir SAD_name
 
     positional arguments:
       audio_dir             directory where the audio files are stored
-      annotations_dir       directory where the annotation files are stored
       rttm_dir              directory where the SAD .rttm files are stored
+      annotations_dir       directory where the annotation files are stored
       SAD_name              name of the SAD used
 
     optional arguments:
       -h, --help            show this help message and exit
-      -e ENV_MODEL_FILE, --env_model_path ENV_MODEL_FILE
+      -e ENV_MODEL_PATH, --env_model_path ENV_MODEL_PATH
                             path to the syllable envelope estimator model file
-      -w WCE_MODEL_FILE, --wce_model_path WCE_MODEL_FILE
+      -w WCE_MODEL_PATH, --wce_model_path WCE_MODEL_PATH
                             path to the word count estimator model file
-      -r REF_PATH, --ref_path REF_PATH
-                            path to the output reference file containing the word
-                            counts of each audio file
     """
 
     if not os.path.exists(args.audio_dir):
@@ -81,7 +78,8 @@ def train(args):
     audio_files = wav_list
     target_counts = tot_seg_words
     dp = DataProcessing()
-    feature_batch, batch_timestamps, files_length = dp.generate_features_batch(audio_files)
+    feature_batch, batch_timestamps, files_length = \
+            dp.generate_features_batch(audio_files)
 
     env_estimator = EnvelopeEstimator()
     env_estimator.load_model(args.env_model_path)
@@ -94,14 +92,6 @@ def train(args):
     wce.alpha = alpha
     wce.train(envelopes, target_counts, model_file=args.wce_model_path)
 
-    if args.ref_path:
-        if not os.path.exists(os.path.dirname(args.ref_path)):
-            raise IOError("Output directory does not exist.")
-        with open(args.ref_path, 'w') as ref:
-            csvwriter = csv.writer(ref, delimiter=';')
-            for row in tot_files_words:
-                csvwriter.writerow(row)
-
     chunks_dir = os.path.dirname(audio_files[0])
     shutil.rmtree(chunks_dir)
 
@@ -110,20 +100,20 @@ def train(args):
 
 def predict(args):
     """
-    usage: cli.py predict [-h] [-e ENV_MODEL_FILE] [-w WCE_MODEL_FILE]
-                      audio_dir rttm_dir SAD_name output
+    usage: cli.py predict [-h] [-e ENV_MODEL_PATH] [-w WCE_MODEL_PATH]
+                          audio_dir rttm_dir output SAD_name
 
     positional arguments:
       audio_dir             directory where the audio files are stored
       rttm_dir              directory where the SAD .rttm files are stored
-      SAD_name              name of the SAD used
       output                path to the word count output .csv file
+      SAD_name              name of the SAD used
 
     optional arguments:
       -h, --help            show this help message and exit
-      -e ENV_MODEL_FILE, --env_model_path ENV_MODEL_FILE
+      -e ENV_MODEL_PATH, --env_model_path ENV_MODEL_PATH
                             path to the syllable envelope estimator model file
-      -w WCE_MODEL_FILE, --wce_model_path WCE_MODEL_FILE
+      -w WCE_MODEL_PATH, --wce_model_path WCE_MODEL_PATH
                             path to the word count estimator model file
     """
 
@@ -191,9 +181,6 @@ def main():
     parser_train.add_argument('-w', '--wce_model_path',
                               help='path to the word count estimator model file',
                               default=adapted_wce_path)
-    parser_train.add_argument('-r', '--ref_path',
-                              help='path to the output reference file containing\
-                              the word counts of each audio file')
     parser_train.set_defaults(func=train)
 
     parser_predict = subparsers.add_parser('predict', help='predict mode')

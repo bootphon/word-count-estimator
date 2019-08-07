@@ -10,6 +10,8 @@ It contains:
     * count_annotations_words - counts the number of "seen" words, and real number
     of words in each audio file with regard to the SAD and the annotations.
     * process_annotations - main function using all above functions.
+    * save_reference - additional function to save the results to a reference
+    file for future comparison.
     (see more info in each function's docstring)
 """
 
@@ -34,8 +36,6 @@ def eaf2txt(eaf_file, output_folder):
         Path to the eaf file.
     output_folder : str
         Path to the output directory.
-
-    Write a txt whose name is the same than the eaf's one in output_folder
     """
 
     basename = os.path.splitext(os.path.basename(eaf_file))[0]
@@ -179,19 +179,22 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, chunks_dir):
 
     wavList = []
 
-    with open(rttm_file, 'rt') as f:
-        reader = csv.reader(f, delimiter=' ')
-        for row in reader:
-            SAD_onset = float(row[3])
-            SAD_offset = float(row[4])
-            SAD_onsets = np.append(SAD_onsets, SAD_onset)
-            SAD_offsets = np.append(SAD_offsets, SAD_onset+SAD_offset)
-            wav_chunk_path = "{}/{}_{}.wav".format(chunks_dir, filename,
-                                                   str(int(SAD_onset)*1000).zfill(8))
-            cmd = ['sox', audio_file, wav_chunk_path,
-                   'trim', str(SAD_onset), str(SAD_offset)]
-            subprocess.call(cmd)
-            wavList.append(wav_chunk_path)
+    try:
+        with open(rttm_file, 'rt') as f:
+            reader = csv.reader(f, delimiter=' ')
+            for row in reader:
+                SAD_onset = float(row[3])
+                SAD_offset = float(row[4])
+                SAD_onsets = np.append(SAD_onsets, SAD_onset)
+                SAD_offsets = np.append(SAD_offsets, SAD_onset+SAD_offset)
+                wav_chunk_path = "{}/{}_{}.wav".format(chunks_dir, filename,
+                                                       str(int(SAD_onset)*1000).zfill(8))
+                cmd = ['sox', audio_file, wav_chunk_path,
+                       'trim', str(SAD_onset), str(SAD_offset)]
+                subprocess.call(cmd)
+                wavList.append(wav_chunk_path)
+    except:
+        shutil.rmtree(chunks_dir)
 
     # Count only words that come from segments of the SAD that fully overlap
     # with segments of the reference.
@@ -309,6 +312,8 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
 
     Returns
     -------
+    tot_files_words : list
+        List of tuples containing filenames and their respective word counts.
     tot_segments_words : list
         List of the word counts of all the segments coming from the files in
         audio_dir.
@@ -324,7 +329,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
     if not eaf_files:
         sys.exit("annotations_processing.py : No annotation file found in {}.".format(eaf_dir))
 
-    tot_words = []
+    tot_files_words = []
     tot_syls = []
     tot_segments_words = []
     tot_segments_syls = []
@@ -337,10 +342,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
         shutil.rmtree(chunks_dir)
         os.makedirs(chunks_dir)
 
-    # TODO: CHANGE sort key to match naming convention + issue when path contains
-    # '_'
-    for eaf_path in sorted(eaf_files, key=lambda k : (int(os.path.basename(k).split('_')[1]),
-                                                      int(os.path.basename(k).split('_')[-2]))):
+    for eaf_path in eaf_files:
         print("Processing %s" % eaf_path)
 
         txt_path = eaf2txt(eaf_path, eaf_dir)
@@ -357,7 +359,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
             if os.path.isfile(audio_path):
                 tw, ts, sw, ss, wl = count_annotations_words(enrich_txt_path, rttm_path,
                                                              audio_path, chunks_dir)
-                tot_words.append((os.path.basename(audio_path)[:-4], tw))
+                tot_files_words.append((os.path.basename(audio_path)[:-4], tw))
                 tot_syls.append(ts)
                 tot_segments_words.append(sw)
                 tot_segments_syls.append(ss)
@@ -371,8 +373,30 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
     tot_segments_words = np.concatenate(tot_segments_words)
     wav_list = np.concatenate(wav_list)
 
-    n = sum(x[1] for x in tot_words)
+    n = sum(x[1] for x in tot_files_words)
     alpha = np.sum(tot_segments_words) / n
 
-    return tot_words, tot_segments_words, wav_list, alpha
+    return tot_files_words, tot_segments_words, wav_list, alpha
+
+
+def save_reference(tot_files_words, output_path):
+    """
+    Additional function to save the results to a reference
+    file for future comparison.
+
+    Parameters
+    ----------
+    tot_files_words : list
+        List of tuples containing filenames and their respective word counts.
+    output_path : str
+        Path to the file where to store the reference .csv file.
+    """
+
+    if not os.path.exists(os.path.dirname(output_path)):
+        raise IOError("Output directory does not exist.")
+
+    with open(output_path, 'w') as ref:
+        csvwriter = csv.writer(ref, delimiter=';')
+        for row in tot_files_words:
+            csvwriter.writerow(row)
 

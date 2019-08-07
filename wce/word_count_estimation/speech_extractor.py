@@ -58,37 +58,39 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
         if not os.path.isfile(sad):
             sys.exit("The SAD file %s has not been found." % sad)
 
-        with open(sad, 'r') as rttm:
-            i = 0
-            for line in rttm:
-                # Replace tabulations by spaces
-                fields = line.replace('\t', ' ')
-                # Remove several successive spaces
-                fields = ' '.join(fields.split())
-                fields = fields.split(' ')
-                onset, duration, activity = float(fields[3]), float(fields[4]), fields[7]
-                if activity == 'speech':
-                    basename = os.path.basename(wav).split('.wav')[0]
-                    output = os.path.join(out_dir, '_'.join([basename, str(i)])+'.wav')
-                    cmd = ['sox', wav, output,
-                           'trim', str(onset), str(duration)]
-                    subprocess.call(cmd)
-                    wav_list.append(output)
-                    i += 1
+        try:
+            with open(sad, 'r') as rttm:
+                i = 0
+                for line in rttm:
+                    # Replace tabulations by spaces
+                    fields = line.replace('\t', ' ')
+                    # Remove several successive spaces
+                    fields = ' '.join(fields.split())
+                    fields = fields.split(' ')
+                    onset, duration, activity = float(fields[3]), float(fields[4]), fields[7]
+                    if activity == 'speech':
+                        basename = os.path.basename(wav).split('.wav')[0]
+                        output = os.path.join(out_dir, '_'.join([basename, str(i)])+'.wav')
+                        cmd = ['sox', wav, output,
+                               'trim', str(onset), str(duration)]
+                        subprocess.call(cmd)
+                        wav_list.append(output)
+                        i += 1
+        except:
+            shutil.rmtree(chunks_dir)
 
     return wav_list
 
 
-def retrieve_files_word_counts(word_counts, wav_list, output_path):
+def retrieve_files_word_counts(word_counts, wav_chunks_list, output_path):
     """
-    Retrieve the word count for each file from the word count for the wav
-    chunks.
+    Retrieve the word count for each file from the wav chunks' word counts.
 
     Parameters
     ----------
     word_counts : list
         List of the word counts per wav chunk.
-    wav_list : list
+    wav_chunks_list : list
         List of paths to the wav chunks.
     output_path : str
         Path to the output_path file where to store the results.
@@ -97,24 +99,22 @@ def retrieve_files_word_counts(word_counts, wav_list, output_path):
     files = []
     files_word_counts = []
 
-    for f in wav_list:
+    for f in wav_chunks_list:
         filepath = '_'.join(f.split('_')[:-1])
         filename = os.path.basename(filepath)
         if filename not in files:
             files.append(filename)
 
     for f in files:
-        indices = [x for x, y in enumerate(wav_list) if f in y]
+        indices = [x for x, y in enumerate(wav_chunks_list) if f in y]
         wc = 0
         for i in indices:
             wc += word_counts[i]
         files_word_counts.append((f, wc))
 
-    # TODO: CHANGE sort key to match naming convention
     with open(output_path, 'w') as out:
         csvwriter = csv.writer(out, delimiter=';')
-        for row in sorted(files_word_counts, key=lambda k: (int(k[0].split('_')[1]),
-                                                            int(k[0].split('_')[-2]))):
+        for row in files_word_counts:
             csvwriter.writerow(row)
     print("Output saved at: {}.".format(output_path))
 
