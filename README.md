@@ -79,7 +79,7 @@ Currently the WCE only supports certain formats:
 - SAD files must be in the [.rttm](https://catalog.ldc.upenn.edu/docs/LDC2004T12/RTTM-format-v13.pdf)
 and have the following fields:
 
-        SPEAKER fname 1 onset duration <NA> <NA> spkr <NA> 
+        SPEAKER fname 1 onset duration <NA> <NA> speech <NA> 
 
 - Annotation files must be in .eaf and should include speaker tiers CHI, MOT,
 FAT as only those are processed.
