@@ -113,7 +113,7 @@ To run them:
 
 ## Acknowledgments
 
-This tool is a python version of the original [MATLAB WCE](https://github.com/aclew/WCE_VM)
+This tool is a reimplementation in Python of the original [MATLAB WCE](https://github.com/aclew/WCE_VM)
 based on:
 
 Rasanen, O., Seshadri, S., Karadayi, J., Riebling, E., Bunce, J., Cristia, A.,
