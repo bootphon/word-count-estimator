@@ -59,11 +59,12 @@ Using the provided `Dockerfile`:
 model, run a docker container and mount your data and result directories to the
 intended directories in the container:
 
-        $ docker run \
+        $ sudo docker run \
           --name wce \
           -v my_data/:/app/data \
           -v my_results/:/app/results \
           wce
+    Your data folder must contain the audio files and their respective SAD files.  
     When the process is done, `output.csv` will be available in `my_results/`.
 
 - For any other command, the arguments will need to be specified and the volumes
@@ -78,7 +79,7 @@ Currently the WCE only supports certain formats:
 - SAD files must be in the [.rttm](https://catalog.ldc.upenn.edu/docs/LDC2004T12/RTTM-format-v13.pdf)
 and have the following fields:
 
-        SPEAKER fname 1 onset duration <NA> <NA> spkr <NA> 
+        SPEAKER fname 1 onset duration <NA> <NA> speech <NA> 
 
 - Annotation files must be in .eaf and should include speaker tiers CHI, MOT,
 FAT as only those are processed.
@@ -112,7 +113,7 @@ To run them:
 
 ## Acknowledgments
 
-This tool is a python version of the original [MATLAB WCE](https://github.com/aclew/WCE_VM)
+This tool is a reimplementation in Python of the original [MATLAB WCE](https://github.com/aclew/WCE_VM)
 based on:
 
 Rasanen, O., Seshadri, S., Karadayi, J., Riebling, E., Bunce, J., Cristia, A.,
