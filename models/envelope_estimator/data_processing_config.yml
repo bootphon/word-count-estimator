@@ -1,0 +1,16 @@
+data_processing:
+    feature_extraction:
+        sample_rate: 16000
+        window_length: 0.025
+        window_step : 0.01
+        fmin: 0
+        fmax:               # = None => will be set by default to sample_rate/2
+        n_mels: 24
+        coefs: 24
+        extractor: 'okko'
+        enhancement: False
+        use_meme_devi: True
+        mel_normalize: True
+    batch:
+        window_length: 300
+        window_step: 100

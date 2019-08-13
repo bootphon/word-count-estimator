@@ -1,18 +1,8 @@
 import yaml
 import pkg_resources
-import librosa
+from librosa import load
+from librosa.feature import mfcc
 import numpy as np
-
-try:
-    path_meme = "matrices/meme.npy"
-    path_devi = "matrices/meme.npy"
-    module_name = 'wce.envelope_estimation.processing'
-    meme_f = pkg_resources.resource_stream(module_name, path_meme)
-    devi_f = pkg_resources.resource_stream(module_name, path_devi)
-    meme = np.load(meme_f)
-    devi = np.load(devi_f)
-except:
-    print("Problem occuring with matrices files meme and devi.")
 
 
 class DataProcessing():
@@ -34,8 +24,7 @@ class DataProcessing():
 
     def __init__(self, sample_rate=16000, window_length=0.025,
                  window_step=0.01, fmin=0.0, fmax=None, n_mels=24,
-                 coefs=24, enhancement=False, use_meme_devi=True,
-                 mel_normalize=True):
+                 coefs=23, enhancement=False, use_meme_devi=True):
         """
         Parameters
         ----------
@@ -65,7 +54,6 @@ class DataProcessing():
         self.coefs = coefs
         self.enhancement = enhancement
         self.use_meme_devi = use_meme_devi
-        self.mel_normalize = mel_normalize
 
     def save_parameters(self, params_file):
         """
@@ -122,38 +110,35 @@ class DataProcessing():
             2D, matrix of features: MFCC sequence.
         """
 
-        wav, sr = librosa.load(audio_file, self.sample_rate)
+        wav, sr = load(audio_file, self.sample_rate)
 
         # TODO: add speech enhancement
         if self.enhancement:
             pass
 
+        n_mfcc = self.coefs + 1
         n_fft = int(self.window_length * sr)
         hop_length = int(self.window_step * sr)
 
-        S, n_fft = librosa.core.spectrum._spectrogram(y=wav, n_fft=n_fft, power=1,
-                                                      hop_length=hop_length)
+        features = mfcc(y=wav, sr=sr, n_mfcc=n_mfcc,
+                        n_fft=n_fft, hop_length=hop_length,
+                        n_mels=self.n_mels, htk=True,
+                        fmin=self.fmin, fmax=self.fmax)
 
-        mel_basis = librosa.filters.mel(sr, n_fft, n_mels=self.n_mels, htk=True,
-                                        fmin=self.fmin, fmax=self.fmax)
-
-        if self.mel_normalize:
-            M = []
-            for row in mel_basis:
-                m = min(x for x in row if x > 0)
-                row_normalized = row / m
-                row_scaled = row_normalized / row_normalized.sum()
-                M.append(row_scaled)
-            mel_basis = np.array(M)
-
-        mel_spectro = np.dot(mel_basis, S)
-
-        features = librosa.core.spectrum.power_to_db(mel_spectro)[:self.coefs]
-        features = features.transpose()
+        features = np.swapaxes(features, 0, 1)
 
         if self.use_meme_devi:
+            path_meme = "matrices/meme.npy"
+            path_meme = "matrices/meme.npy"
+            module_name = 'wce.envelope_estimation.processing'
+            meme_f = pkg_resources.resource_stream(module_name, path_meme).read()
+            devi_f = pkg_resources.resource_stream(module_name, path_meme).read()
+            meme = np.frombuffer(meme_f)
+            devi = np.frombuffer(devi_f)
             features = features - meme
             features = features / devi
+            #except:
+           #     print("Problem with matrices files meme and devi.")
 
         return features
 

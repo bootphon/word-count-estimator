@@ -3,6 +3,7 @@ from math import sqrt
 import pytest
 import numpy as np
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
 
 
 from wce.envelope_estimation.data_processing import DataProcessing
@@ -13,7 +14,7 @@ from wce.word_count_estimation.word_count_estimator import WordCountEstimator
 
 
 load_dotenv("../.env")
-env_path = os.getenv("DEFAULT_ENV_EST")
+env_path = os.getenv("DEFAULT_ENV")
 default_wce_path = os.getenv("DEFAULT_WCE")
 test_wce_path = os.getenv("TEST_WCE")
 
@@ -35,6 +36,8 @@ def get_envelopes():
     envelopes = dp.reconstruct_envelopes(envelope_batch,
                                          batch_timestamps,
                                          files_length)
+    plt.plot(envelopes[0])
+    plt.show()
     return envelopes, target_counts
 
 

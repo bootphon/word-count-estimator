@@ -1,13 +1,8 @@
-import os
+import os, sys
 import numpy as np
-from dotenv import load_dotenv
 from keras.models import Model, load_model
 from keras.layers import Input, Dense, LSTM, add
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-
-
-load_dotenv(".env")
-DEFAULT_MODEL = os.getenv("DEFAULT_ENV_EST")
 
 
 class EnvelopeEstimator:
@@ -43,14 +38,13 @@ class EnvelopeEstimator:
         Predict the syllable envelopes on a batch of MFCCs frames.
     """
 
-    def __init__(self):
-        self.model = load_model(DEFAULT_MODEL)
-
     def summary(self):
         """
         Print a summary of the model.
         """
 
+        if not self.model:
+            sys.exit("Initialize/Load envelope estimator model first.")
         self.model.summary()
 
     def initialize_BLSTM_model(self, X_shape):
@@ -83,7 +77,6 @@ class EnvelopeEstimator:
                       metrics=['mean_squared_error'])
 
         self.model = model
-        print("BLSTM model initialized successfully.")
 
     def load_model(self, model_file):
         """
@@ -100,7 +93,7 @@ class EnvelopeEstimator:
         except IOError:
             print("Path to envelope estimation model is wrong.")
 
-    def train(self, X_train, y_train, model_file="../models/trained_model.h5"):
+    def train(self, X_train, y_train, model_file, itermediate_model_file):
         """
         Trains the model given the input MFCCs frames and their respective
         targeted output syllable envelopes.
@@ -112,25 +105,30 @@ class EnvelopeEstimator:
         y_train : ndarray
             2D array, targeted output syllable envelopes of the frames.
         """
-
-        print("Training syllable envelope estimator model.")
+        
+        if not self.model:
+            sys.exit("Initialize/Load envelope estimator model first.")
 
         new_shape = [y_train.shape[0], y_train.shape[1], 1]
         y_train = np.reshape(y_train, new_shape)
 
         earlyStopping = EarlyStopping(monitor='val_loss', min_delta=0.0001,
                                       patience=15, verbose=0, mode='auto')
-        checkPoint = ModelCheckpoint("../models/curr_intermed.h5",
-                                     monitor='val_loss')
+        try:
+            checkPoint = ModelCheckpoint(intermediate_model_file,
+                                         monitor='val_loss')
+        except IOError:
+            print("Invalid intermediate envelope estimator model path.")
 
         self.model.fit(X_train, y_train, validation_data=(X_train, y_train),
                        shuffle=True, epochs=15000, batch_size=250,
                        callbacks=[earlyStopping, checkPoint],
                        validation_split=0.1)
 
-        self.model.save(model_file)
-        print("Training finished successfully.")
-        print("Model saved at {}.".format(model_file))
+        try:
+            self.model.save(model_file)
+        except IOError:
+            print("Invalid envelope estimator model path.")
 
     def predict(self, X):
         """
@@ -147,7 +145,8 @@ class EnvelopeEstimator:
             2D array, output syllable envelopes of the frames.
         """
 
-        print("Predicting envelopes batch.")
+        if not self.model:
+            sys.exit("Initialize/Load envelope estimator model first.")
 
         if len(self.model.layers[0].output_shape) > 3:
             new_shape = [X.shape[0], X.shape[1], X.shape[2], 1]
@@ -157,5 +156,5 @@ class EnvelopeEstimator:
         if envelope_batch.ndim > 2:
             envelope_batch = envelope_batch[:, :, 0]
 
-        print("Envelopes batch predicted successfully.")
         return envelope_batch
+

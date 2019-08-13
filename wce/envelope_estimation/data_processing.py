@@ -142,6 +142,7 @@ class DataProcessing():
         files_features = generate_features(audio_files,
                                            self.fgen_window_length,
                                            self.fgen_window_step)[1]
+        print(files_features[0])
 
         feature_batch, batch_timestamps, files_length = \
                     cut_features(files_features, self.cut_window_length,

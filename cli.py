@@ -18,7 +18,9 @@ import csv
 import shutil
 import sys
 from dotenv import load_dotenv
-from tensorflow.python.util import deprecation
+import time
+
+import matplotlib.pyplot as plt
 
 # To disable tensorflow deprecation warnings.
 import logging
@@ -135,15 +137,35 @@ def predict(args):
 
     audio_files = extract_speech(args.audio_dir, args.rttm_dir, args.SAD_name)
     dp = DataProcessing()
+    ti_0 = time.perf_counter()
     feature_batch, timestamps, files_length = dp.generate_features_batch(audio_files)
+    tf_0 = time.perf_counter()
+    #plt.imshow(feature_batch[0])
+    #plt.show()
+    print(feature_batch[0])
 
     env_estimator = EnvelopeEstimator()
     env_estimator.load_model(args.env_model_path)
+    ti_1 = time.perf_counter()
     envelopes_batch = env_estimator.predict(feature_batch)
+    tf_1 = time.perf_counter()
+    ti_2 = time.perf_counter()
     envelopes = dp.reconstruct_envelopes(envelopes_batch,
                                          timestamps,
                                          files_length)
+    #plt.plot(envelopes[0])
+    #plt.show()
+    tf_2 = time.perf_counter()
+    
+    t0 = tf_0 - ti_0
+    t1 = tf_1 - ti_1
+    t2 = tf_2 - ti_2
 
+    print('t0: ', t0)
+    print('t1: ', t1)
+    print('t2: ', t2)
+    print('total: ', t0+t1+t2)
+    
     wce = WordCountEstimator()
     wce.load_model(args.wce_model_path)
     word_counts = wce.predict(envelopes)
@@ -159,7 +181,7 @@ def main():
     Main function in charge of parsing the command.
     """
 
-    env_path = os.getenv("DEFAULT_ENV_EST")
+    env_path = os.getenv("DEFAULT_ENV")
     default_wce_path = os.getenv("DEFAULT_WCE")
     adapted_wce_path = os.getenv("ADAPTED_WCE")
 
