@@ -1,3 +1,8 @@
+"""Utility
+
+Utility functions.
+"""
+
 import sys
 import numpy as np
 

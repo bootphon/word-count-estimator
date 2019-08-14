@@ -9,10 +9,10 @@ class EnvelopeEstimator:
     """
     BLSTM model for syllable envelope estimation.
 
-    The model takes frames of MFCCs as input.
+    The model takes a matrix of MFCCs as input.
     The output of the BLSTM network is the activation of the output node for each
-    column of MFFCs presented to the network in the input sequence. This output
-    represents the syllable probabilty. Once the whole signal is processed it
+    frame of MFFCs presented to the network in the input sequence. This output
+    represents the syllable probability. Once the whole signal is processed it
     gives the syllable probability envelope.
 
     Remark: This model is not yet trainable as we do not have training data,

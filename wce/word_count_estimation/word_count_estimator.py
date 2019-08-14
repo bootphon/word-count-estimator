@@ -1,9 +1,9 @@
+import os, sys
 import pickle
-import os
 from math import sqrt
-import sys
 from statsmodels.api import OLS, add_constant
 import numpy as np
+
 from .utility import peakdet
 
 THR = np.concatenate((np.linspace(0.0001, 0.0009, 9),
@@ -44,6 +44,8 @@ class WordCountEstimator:
         Save the model to a given file.
     load_model(model_file)
         Load the model from a given file.
+    add_features(envelope)
+        Compute the desired features from a syllable envelope.
     train(envelopes, target_word_counts, thresholds, model_file)
         Train the model given syllable envelopes and their respective target
         word counts. The resulting model is saved to model_file.

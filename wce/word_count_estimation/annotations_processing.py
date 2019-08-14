@@ -10,8 +10,6 @@ It contains:
     * count_annotations_words - counts the number of "seen" words, and real number
     of words in each audio file with regard to the SAD and the annotations.
     * process_annotations - main function using all above functions.
-    * save_reference - additional function to save the results to a reference
-    file for future comparison.
     (see more info in each function's docstring)
 """
 
@@ -21,6 +19,8 @@ import glob
 import subprocess
 import numpy as np
 import pympi as pmp
+
+from .speech_extractor import extract_speech
 
 
 def eaf2txt(eaf_file, output_folder):
@@ -128,7 +128,7 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, chunks_dir):
         1D array containing the number of words in each SAD segment.
     SAD_segments_syllables : ndarray
         1D array containing the number of syllables in each SAD segment.
-    wavList : list
+    wav_list : list
         List of the .wav files corresponding to the SAD segments (same order
         as the 2 previous arrays).
     """
@@ -173,123 +173,113 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, chunks_dir):
     tot_words = sum(wordcount)
     tot_syls = sum(sylcount)
 
-    # Read also the .rttm file to get SAD segment onsets and offsets
-    SAD_onsets = np.array([])
-    SAD_offsets = np.array([])
-
-    wavList = []
-
-    try:
-        with open(rttm_file, 'rt') as f:
-            reader = csv.reader(f, delimiter=' ')
-            for row in reader:
-                SAD_onset = float(row[3])
-                SAD_offset = float(row[4])
-                SAD_onsets = np.append(SAD_onsets, SAD_onset)
-                SAD_offsets = np.append(SAD_offsets, SAD_onset+SAD_offset)
-                wav_chunk_path = "{}/{}_{}.wav".format(chunks_dir, filename,
-                                                       str(int(SAD_onset)*1000).zfill(8))
-                cmd = ['sox', audio_file, wav_chunk_path,
-                       'trim', str(SAD_onset), str(SAD_offset)]
-                subprocess.call(cmd)
-                wavList.append(wav_chunk_path)
-    except:
-        shutil.rmtree(chunks_dir)
-
-    # Count only words that come from segments of the SAD that fully overlap
-    # with segments of the reference.
+    # default values that will be changed in case a rttm file is provided
     SAD_segments_words = np.array([])
     SAD_segments_syllables = np.array([])
+    wav_list = [audio_file]
 
-    for sadseg in range(0, len(SAD_onsets)):
-        SAD_segments_words = np.append(SAD_segments_words,0)
-        SAD_segments_syllables = np.append(SAD_segments_syllables,0)
-        SAD_onset = SAD_onsets[sadseg]
-        SAD_offset = SAD_offsets[sadseg]
+    if rttm_file:
 
-        # These segments must be fully within the SAD segment
-        # Segments that end after SAD onset
-        tmp1 = offset-SAD_onset > 0
-        # Segments that begin before SAD offset
-        tmp2 = onset-SAD_offset < 0
-        # Valid segments are the ones with overlap
-        tmp3 = (tmp1 & tmp2)
+        # Read also the .rttm file to get SAD segment onsets and offsets
+        SAD_onsets = np.array([])
+        SAD_offsets = np.array([])
 
-        # Which original segments overlap with the target segment
-        if sum(tmp3) > 0:
-            i = np.where(tmp3 > 0)
-            segs_to_consider = range(max(0,i[0][0]-1), min(len(tmp1),i[0][-1]+2))
+        wav_list, SAD_onsets, SAD_offsets = extract_speech(audio_file, rttm_file,
+                                                           chunks_dir)
 
-            # Calculate exact overlapping
-            for j in range(0, len(segs_to_consider)):
+        # Count only words that come from segments of the SAD that fully overlap
+        # with segments of the reference.
 
-                # For words
-                total_words_in_real = wordcount[segs_to_consider[j]]
-                total_syls_in_real = sylcount[segs_to_consider[j]]
-                words_real = str.split(ortho[segs_to_consider[j]])
-                y = 0
-                wordlength = np.empty([len(words_real)])
-                for ww in words_real:
-                    wordlength[y] = len(ww)
-                    y = y+1
-                total_wordlength = sum(wordlength)
+        for sadseg in range(0, len(SAD_onsets)):
+            SAD_segments_words = np.append(SAD_segments_words,0)
+            SAD_segments_syllables = np.append(SAD_segments_syllables,0)
+            SAD_onset = SAD_onsets[sadseg]
+            SAD_offset = SAD_offsets[sadseg]
 
-                # Where real segment starts and ends
-                t1 = onset[segs_to_consider[j]]
-                t2 = offset[segs_to_consider[j]]
-                dur_real = t2-t1
-                uniform_wordlengths = wordlength/total_wordlength*dur_real
-                startpos = 0
-                for jj in range(0, len(words_real)):
-                    i1 = range(int((t1+startpos)*100),
-                               int((t1+startpos+uniform_wordlengths[jj])*100))
-                    i2 = range(int(SAD_onset*100), int(SAD_offset*100))
-                    # Number of overlapping elements
-                    olap = len(list(set(i1) & set(i2)))
-                    # Proportion of utterance overlapping with SAD segment
-                    coverage = (olap/100.0)/dur_real
-                    if(coverage > 0):
-                        SAD_segments_words[sadseg] += 1
-                    startpos = startpos+uniform_wordlengths[jj]
+            # These segments must be fully within the SAD segment
+            # Segments that end after SAD onset
+            tmp1 = offset-SAD_onset > 0
+            # Segments that begin before SAD offset
+            tmp2 = onset-SAD_offset < 0
+            # Valid segments are the ones with overlap
+            tmp3 = (tmp1 & tmp2)
 
-                # Same for syllables
-                total_syllables_in_real = sylcount[segs_to_consider[j]]
-                syllables_real = np.empty([])
-                syllables_tmp = str.split(syllables[segs_to_consider[j]])
-                for ss in range (0,len(syllables_tmp)):
-                    syllables_real = np.append(syllables_real,
-                                        str.split(syllables_tmp[ss][0:-1],'-'))
-                if(len(syllables_tmp) > 0):
-                    syllables_real = syllables_real[1:]
-                else:
-                    syllables_real = []
-                y = 0
-                syllablelength = np.empty([len(syllables_real)])
-                for ww in syllables_real:
-                    syllablelength[y] = len(ww)
-                    y = y+1
-                total_syllablelength = sum(syllablelength)
-                t1 = onset[segs_to_consider[j]]
-                t2 = offset[segs_to_consider[j]]
-                dur_real = t2-t1
-                uniform_syllablelengths = syllablelength/total_syllablelength*dur_real
-                startpos = 0
-                for jj in range(0,len(syllables_real)):
-                    i1 = range(int((t1+startpos)*100),
-                               int((t1+startpos+uniform_syllablelengths[jj])*100))
-                    i2 = range(int(SAD_onset*100),int(SAD_offset*100))
-                    # Number of overlapping elements
-                    olap = len(list(set(i1) & set(i2)))
-                    # Proportion of utterance overlapping with SAD segment
-                    coverage = (olap/100.0)/dur_real
-                    if(coverage > 0):
-                        SAD_segments_syllables[sadseg] += 1
-                    startpos += uniform_syllablelengths[jj]
+            # Which original segments overlap with the target segment
+            if sum(tmp3) > 0:
+                i = np.where(tmp3 > 0)
+                segs_to_consider = range(max(0,i[0][0]-1), min(len(tmp1),i[0][-1]+2))
 
-    return tot_words, tot_syls, SAD_segments_words, SAD_segments_syllables, wavList
+                # Calculate exact overlapping
+                for j in range(0, len(segs_to_consider)):
+
+                    # For words
+                    total_words_in_real = wordcount[segs_to_consider[j]]
+                    total_syls_in_real = sylcount[segs_to_consider[j]]
+                    words_real = str.split(ortho[segs_to_consider[j]])
+                    y = 0
+                    wordlength = np.empty([len(words_real)])
+                    for ww in words_real:
+                        wordlength[y] = len(ww)
+                        y = y+1
+                    total_wordlength = sum(wordlength)
+
+                    # Where real segment starts and ends
+                    t1 = onset[segs_to_consider[j]]
+                    t2 = offset[segs_to_consider[j]]
+                    dur_real = t2-t1
+                    uniform_wordlengths = wordlength/total_wordlength*dur_real
+                    startpos = 0
+                    for jj in range(0, len(words_real)):
+                        i1 = range(int((t1+startpos)*100),
+                                   int((t1+startpos+uniform_wordlengths[jj])*100))
+                        i2 = range(int(SAD_onset*100), int(SAD_offset*100))
+                        # Number of overlapping elements
+                        olap = len(list(set(i1) & set(i2)))
+                        # Proportion of utterance overlapping with SAD segment
+                        coverage = (olap/100.0)/dur_real
+                        if(coverage > 0):
+                            SAD_segments_words[sadseg] += 1
+                        startpos = startpos+uniform_wordlengths[jj]
+
+                    # Same for syllables
+                    total_syllables_in_real = sylcount[segs_to_consider[j]]
+                    syllables_real = np.empty([])
+                    syllables_tmp = str.split(syllables[segs_to_consider[j]])
+                    for ss in range (0,len(syllables_tmp)):
+                        syllables_real = np.append(syllables_real,
+                                            str.split(syllables_tmp[ss][0:-1],'-'))
+                    if(len(syllables_tmp) > 0):
+                        syllables_real = syllables_real[1:]
+                    else:
+                        syllables_real = []
+                    y = 0
+                    syllablelength = np.empty([len(syllables_real)])
+                    for ww in syllables_real:
+                        syllablelength[y] = len(ww)
+                        y = y+1
+                    total_syllablelength = sum(syllablelength)
+                    t1 = onset[segs_to_consider[j]]
+                    t2 = offset[segs_to_consider[j]]
+                    dur_real = t2-t1
+                    uniform_syllablelengths = syllablelength/total_syllablelength*dur_real
+                    startpos = 0
+                    for jj in range(0,len(syllables_real)):
+                        i1 = range(int((t1+startpos)*100),
+                                   int((t1+startpos+uniform_syllablelengths[jj])*100))
+                        i2 = range(int(SAD_onset*100),int(SAD_offset*100))
+                        # Number of overlapping elements
+                        olap = len(list(set(i1) & set(i2)))
+                        # Proportion of utterance overlapping with SAD segment
+                        coverage = (olap/100.0)/dur_real
+                        if(coverage > 0):
+                            SAD_segments_syllables[sadseg] += 1
+                        startpos += uniform_syllablelengths[jj]
+
+    return tot_words, tot_syls, SAD_segments_words, SAD_segments_syllables, wav_list
 
 
-def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_path):
+def process_annotations(audio_dir, annotations_dir, rttm_dir,
+                        sad_name, selcha_script_path):
     """
     Process all annotations files in a given dir using the previous functions:
         1- retrieve information from the annotations
@@ -301,7 +291,7 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
     ----------
     audio_dir : str
         Path to the directory of the audio files.
-    eaf_dir : str
+    annotations_dir : str
         Path to the directory of the annotations files.
     rttm_dir : str
         Path to the directory of the SAD files.
@@ -325,12 +315,12 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
         predicting later on.
     """
 
-    eaf_files = glob.glob(os.path.join(eaf_dir, '*.eaf'))
+    eaf_files = glob.glob(os.path.join(annotations_dir, '*.eaf'))
     if not eaf_files:
-        sys.exit("annotations_processing.py : No annotation file found in {}.".format(eaf_dir))
+        sys.exit("No annotation file found in {}.".format(annotations_dir))
 
     tot_files_words = []
-    tot_syls = []
+    tot_files_syls = []
     tot_segments_words = []
     tot_segments_syls = []
     wav_list = []
@@ -345,58 +335,37 @@ def process_annotations(audio_dir, eaf_dir, rttm_dir, sad_name, selcha_script_pa
     for eaf_path in eaf_files:
         print("Processing %s" % eaf_path)
 
-        txt_path = eaf2txt(eaf_path, eaf_dir)
+        txt_path = eaf2txt(eaf_path, annotations_dir)
         enrich_txt_path = enrich_txt(txt_path, selcha_script_path)
-
-        rttm_name = "{}_{}.rttm".format(sad_name, os.path.basename(txt_path[:-4]))
-        rttm_path = os.path.join(rttm_dir, rttm_name)
+        
         audio_name = "{}.wav".format(os.path.basename(txt_path[:-4]))
         audio_path = os.path.join(audio_dir, audio_name)
 
-        print("Searching for {} and {}".format(rttm_path, audio_path))
+        if rttm_dir:
+            rttm_name = "{}_{}.rttm".format(sad_name, os.path.basename(txt_path[:-4]))
+            rttm_path = os.path.join(rttm_dir, rttm_name)
 
-        if os.path.isfile(rttm_path):
-            if os.path.isfile(audio_path):
-                tw, ts, sw, ss, wl = count_annotations_words(enrich_txt_path, rttm_path,
-                                                             audio_path, chunks_dir)
-                tot_files_words.append((os.path.basename(audio_path)[:-4], tw))
-                tot_syls.append(ts)
-                tot_segments_words.append(sw)
-                tot_segments_syls.append(ss)
-                wav_list.append(wl)
-                os.remove(enrich_txt_path)
-            else:
+            if not os.path.isfile(rttm_path):
+                sys.exit("Missing .rttm for {}.".format(eaf_path))
+            if not os.path.isfile(audio_path):
                 sys.exit("Missing .wav file for {}.".format(eaf_path))
         else:
-            sys.exit("Missing .rttm for {}.".format(eaf_path))
+            rttm_path=None
+
+        tw, ts, sw, ss, wl = count_annotations_words(enrich_txt_path, rttm_path,
+                                                     audio_path, chunks_dir)
+        tot_files_words.append(tw)
+        tot_files_syls.append(ts)
+        tot_segments_words.append(sw)
+        tot_segments_syls.append(ss)
+        wav_list.append(wl)
+        os.remove(enrich_txt_path)
 
     tot_segments_words = np.concatenate(tot_segments_words)
     wav_list = np.concatenate(wav_list)
 
-    n = sum(x[1] for x in tot_files_words)
+    n = sum(tot_files_words)
     alpha = np.sum(tot_segments_words) / n
 
     return tot_files_words, tot_segments_words, wav_list, alpha
-
-
-def save_reference(tot_files_words, output_path):
-    """
-    Additional function to save the results to a reference
-    file for future comparison.
-
-    Parameters
-    ----------
-    tot_files_words : list
-        List of tuples containing filenames and their respective word counts.
-    output_path : str
-        Path to the file where to store the reference .csv file.
-    """
-
-    if not os.path.exists(os.path.dirname(output_path)):
-        raise IOError("Output directory does not exist.")
-
-    with open(output_path, 'w') as ref:
-        csvwriter = csv.writer(ref, delimiter=';')
-        for row in tot_files_words:
-            csvwriter.writerow(row)
 

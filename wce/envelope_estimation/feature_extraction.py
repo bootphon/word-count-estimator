@@ -23,21 +23,35 @@ class FeatureExtraction:
 
     Attributes
     ----------
-    sample_rate :
-    window_length : float
-        Length of the sliding window for the features generation as a fraction
-        of the audio files sample rate.
+    sample_rate : int, optional
+        Defaults to 16000.
+    window_length : float, optional
+        Length of the sliding window as a fraction of the audio files sample rate.
         Defaults to 0.025.
-    window_step : float
-        Step of the sliding window for the features generation as a fraction
-        of the audio files sample rate.
+    window_step : float, optional
+        Step of the sliding window as a fraction of the audio files sample rate.
         Defaults to 0.01.
-    fmin :
-    fmax : 
-    n_mels :
-    coefs :
-    enhancement :
-    use_meme_devi :
+    fmin : int, optional
+        Lowest frequency (in Hz).
+        Defaults to 0.
+    fmax : int, optional
+        Highest frequency (in Hz).
+        Defaults to None. (will become sample_rate/2)
+    n_mels : int, optional
+        Number of Mel bands to generate.
+        Defaults to 24.
+    coefs : int, optional
+        Number of coefficients.
+        Defaults to 24.
+    enhancement : bool, optional
+        Use speech enhancement.
+        Defaults to False.
+    use_meme_devi : bool, optional
+        Use meme and devi arrays.
+        Defaults to True.
+    mel_rescale : bool, optional
+        Rescale the mel filters.
+        Defaults to True.
 
     Methods
     -------
@@ -45,6 +59,12 @@ class FeatureExtraction:
         Save the data processing parameters to a given file.
     load(params_file)
         Load the data processing parameters from a given file.
+    rescale_mel_filter(mel_basis)
+        Rescale mel filters so values in a band add up to 1. 
+    mel_features_librosa(wav)
+        Determine the MFCCs of each signal using the librosa library.
+    mel_features_okko(wav)
+        Determine the energy and MFCCs of each signal using Okko's method.
     generate_features(audio_file)
         Generate the MFCC sequence of an audio file.
     """
@@ -110,7 +130,17 @@ class FeatureExtraction:
     @staticmethod
     def rescale_mel_filters(mel_basis):
         """
-        TODO
+        Rescale mel filters so values in a band add up to 1. 
+
+        Parameters
+        ----------
+        mel_basis : ndarray
+            2D, mel transform matrix.
+            
+        Returns
+        -------
+        mel_basis : ndarray
+            2D, scaled mel transform matrix.
         """
 
         M = []
@@ -125,7 +155,17 @@ class FeatureExtraction:
 
     def mel_features_librosa(self, wav):
         """
-        TODO
+        Determine the MFCCs of each signal using the librosa library.
+
+        Parameters
+        ----------
+        wav : ndarray
+            1D, waveform.
+
+        Returns
+        -------
+        features : ndarray
+            2D, MFCCs matrix.
         """
 
         n_fft = int(self.window_length * self.sample_rate)
@@ -149,22 +189,21 @@ class FeatureExtraction:
 
     def mel_features_okko(self, wav):
         """
-        Determine the energy and MFCCs of each signal.
+        Determine the energy and MFCCs of each signal using the method in
+        the original repo.
 
         Remark: in the original code, the energy is computed but never used. Here
         it is also computed as it might be used as additional features.
 
         Parameters
         ----------
-        audio_files : list
-            List of the paths to the audio files to process.
+        wav : ndarray
+            1D, waveform.
 
         Returns
         -------
-        E : list
-            List of the energy arrays of the audio files.
-        F : list
-            List of the MFCCs frames (2D array) of the audio files.
+        total_mfccs : ndarray
+            2D, MFCCs matrix.
         """
 
         wav_len = len(wav)
@@ -201,7 +240,7 @@ class FeatureExtraction:
 
     def generate_features(self, audio_file):
         """
-        Generate the MFCC sequence of an audio file.
+        Generate the a matrix of features for an audio file.
 
         Parameters
         ----------

@@ -5,24 +5,78 @@ results of the WCE on the segments that come from the same file.
 
 The module contains the following functions:
 
-    * extract_speech - returns the list of paths to the wavs segments.
-    * retrieve_word_counts - writes the gathered results per file to a .csv file.
+    * extract_speech - extract speech for one file.
+    * extract_speech_from_dir - extract speech for files in a directory.
+    * retrieve_word_counts - write the gathered results per file to a .csv file.
 """
 
-import os
-import sys
-import subprocess
-import glob
-import shutil
+import os, sys, glob
 import csv
+import subprocess
+import shutil
+import numpy as np
 
-
-def extract_speech(audio_dir, rttm_dir, sad_name):
+def extract_speech(audio_file, rttm_file, chunks_dir):
     """
-    Read audio files and their corresponding .rttm files and extracts segments
-    of the wav files that have been annotated as being speech.
+    Extract speech segments from an audio file.
 
-    Paremeters
+    Parameters
+    ----------
+    audio_file : str
+        Path to the audio file.
+    rttm_file : str
+        Path to the corresponding rttm file.
+    chunks_dir : str
+        Path to the directory where to store the resulting wav chunks.
+
+    Returns
+    -------
+    wav_list : list
+        List of the .wav files corresponding to the speech segments.
+    onsets : 
+        List of the onsets of the speech segments.
+    offsets : 
+        List of the offsets of the speech segments.
+    """
+    
+    wav_list = []
+    onsets = []
+    offsets = []
+
+    try:
+        with open(rttm_file, 'r') as rttm:
+            i = 0
+            for line in rttm:
+                # Replace tabulations by spaces
+                fields = line.replace('\t', ' ')
+                # Remove several successive spaces
+                fields = ' '.join(fields.split())
+                fields = fields.split(' ')
+                onset, duration, activity = float(fields[3]), float(fields[4]), fields[7]
+                if activity == 'speech':
+                    basename = os.path.basename(audio_file).split('.wav')[0]
+                    output = os.path.join(chunks_dir, '_'.join([basename, str(i)])+'.wav')
+                    cmd = ['sox', audio_file, output,
+                           'trim', str(onset), str(duration)]
+                    subprocess.call(cmd)
+                    wav_list.append(output)
+                    onsets.append(onset)
+                    offsets.append(onset+duration)
+                    i += 1
+    except IOError:
+        shutil.rmtree(chunks_dir)
+        sys.exit("Issue when extracting speech segments from wav.")
+
+    onsets = np.array(onsets)
+    offsets = np.array(offsets)
+
+    return wav_list, onsets, offsets
+
+def extract_speech_from_dir(audio_dir, rttm_dir, sad_name):
+    """
+    Extract speech for files in a directory.
+
+    Parameters
     ----------
     audio_dir : str
         Path to the directory containing the audio files (.wav).
@@ -35,49 +89,29 @@ def extract_speech(audio_dir, rttm_dir, sad_name):
     -------
     wav_list : list
         List containing the path to the wav segments resulting from the trim.
-    out_dir : str
-        Directory for the extracted .wav segments.
     """
 
     wav_list = []
-    wav_files = glob.glob(audio_dir + "/*.wav")
+    audio_files = glob.glob(audio_dir + "/*.wav")
     if not wav_files:
         sys.exit(("speech_extractor.py : No audio files found in {}".format(audio_dir)))
 
-    out_dir = os.path.join(audio_dir, "wav_chunks_predict")
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+    chunks_dir = os.path.join(audio_dir, "wav_chunks_predict")
+    if not os.path.exists(chunks_dir):
+        os.mkdir(chunks_dir)
     else:
-        shutil.rmtree(out_dir)
-        os.mkdir(out_dir)
+        shutil.rmtree(chunks_dir)
+        os.mkdir(chunks_dir)
 
-    for wav in wav_files:
+    for audio_file in audio_files:
+        rttm_filename = "{}_{}.rttm".format(sad_name, os.path.basename(wav)[:-4])
+        rttm_file = os.path.join(rttm_dir, sad_filename)
+        if not os.path.isfile(rttm_file):
+            sys.exit("The SAD file %s has not been found." % rttm_file)
 
-        sad_filename = "{}_{}.rttm".format(sad_name, os.path.basename(wav)[:-4])
-        sad = os.path.join(rttm_dir, sad_filename)
-        if not os.path.isfile(sad):
-            sys.exit("The SAD file %s has not been found." % sad)
+        wav_list.append(extract_speech(wav, rttm_file, sad_name, chunks_dir)[0])
 
-        try:
-            with open(sad, 'r') as rttm:
-                i = 0
-                for line in rttm:
-                    # Replace tabulations by spaces
-                    fields = line.replace('\t', ' ')
-                    # Remove several successive spaces
-                    fields = ' '.join(fields.split())
-                    fields = fields.split(' ')
-                    onset, duration, activity = float(fields[3]), float(fields[4]), fields[7]
-                    if activity == 'speech':
-                        basename = os.path.basename(wav).split('.wav')[0]
-                        output = os.path.join(out_dir, '_'.join([basename, str(i)])+'.wav')
-                        cmd = ['sox', wav, output,
-                               'trim', str(onset), str(duration)]
-                        subprocess.call(cmd)
-                        wav_list.append(output)
-                        i += 1
-        except:
-            shutil.rmtree(chunks_dir)
+    wav_list = np.concatenate(wav_list)
 
     return wav_list
 

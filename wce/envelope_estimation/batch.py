@@ -9,10 +9,10 @@ class Batch():
 
     Attributes
     ----------
-    window_length : int
+    window_length : int, optional
         Length of the sliding window.
         Defaults to 300.
-    window_step : int
+    window_step : int, optional
         Step of the sliding window.
         Defaults to 100.
 
@@ -76,22 +76,22 @@ class Batch():
 
     def generate_batch(self, features_list):
         """
-        Generate a batch of overlapping feature chunks from a feature matrices
-        list.
-        Timestamps and original length are returned as well as the batch for
+        Generate a batch of overlapping feature chunks from a list of feature
+        matrices.
+        Timestamps and original lengths are returned as well as the batch for
         future reconstruction.
 
         Parameters
         ----------
         features : ndarray
-            2D, matrix of features of a waveform.
+            3D, list of matrices of features of a waveform.
 
         Returns
         -------
         batch : ndarray
             3D, array of feature chunks of equal size.
         timestamps : ndarray
-            1D, array of the original timestamps of each feature column in the
+            1D, array of the original timestamps of each feature frame in the
             batch.
         wav_lengths : int
             Length of the original audio waveform.
@@ -151,13 +151,13 @@ class Batch():
         timestamps : ndarray
             1D, array of the original timestamps of segment's value in the
             batch.
-        wav_length : int
+        wav_lengths : int
             Length of the original audio waveforms.
 
         Returns
         -------
-        envelope : ndarray
-            1D, reconstructed envelope.
+        envelopes : ndarray
+            2D, reconstructed envelopes.
         """
 
         n_wav = len(wav_lengths)

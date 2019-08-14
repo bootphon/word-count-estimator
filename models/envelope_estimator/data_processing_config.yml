@@ -7,7 +7,7 @@ data_processing:
         fmax:               # = None => will be set by default to sample_rate/2
         n_mels: 24
         coefs: 24
-        extractor: 'okko'
+        extractor: 'librosa'
         enhancement: False
         use_meme_devi: True
         mel_normalize: True
