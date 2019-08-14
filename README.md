@@ -32,20 +32,28 @@ The tool disposes of two commands: train and predict.
 
 - **Train:**  
     Trains a WCE model on audio files given their respective SAD files and annotation
-    files.
+    files. 
 
-        $ python cli.py train wav_dir sad_dir annotation_dir sad_name -w output_model_file
+        $ python cli.py train wav_dir annotation_dir -r sad_dir -s sad_name -w output_model_file
 
     If no model file is indicated, it will be saved to a default file: 
     `adapted_model.pickle`.
+    To see all the options use the help command.
 
 - **Predict:**  
     Predicts the word counts of audio files given their respective SAD files.
 
-        $ python cli.py predict wav_dir sad_dir output_file sad_name -w model_file
+        $ python cli.py predict wav_dir output_file -r sad_dir -s sad_name -w model_file
 
     If no model file is indicated, the default model will be used: 
     `default_model.pickle`.
+    To see all the options use the help command.
+    
+It is recommended to provide SAD files as the results without them are not yet
+conclusive.
+
+All data preprocessing parameters can be tweaked in the configuration file
+at models/envelope_estimator/data_processing_config.yml.
 
 ### Docker
 
@@ -57,7 +65,7 @@ Using the provided `Dockerfile`:
 
 - Then to predict the word counts for some audio files using the pre-trained 
 model, run a docker container and mount your data and result directories to the
-intended directories in the container:
+intended directories in the container. 
 
         $ sudo docker run \
           --name wce \
@@ -69,7 +77,7 @@ intended directories in the container:
 
 - For any other command, the arguments will need to be specified and the volumes
 adapted. For instance to use the train command, a `models` volume will need to be
-specified.
+specified for the output model file.
 
 
 ## Input data format
