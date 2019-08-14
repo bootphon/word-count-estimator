@@ -93,7 +93,7 @@ def extract_speech_from_dir(audio_dir, rttm_dir, sad_name):
 
     wav_list = []
     audio_files = glob.glob(audio_dir + "/*.wav")
-    if not wav_files:
+    if not audio_files:
         sys.exit(("speech_extractor.py : No audio files found in {}".format(audio_dir)))
 
     chunks_dir = os.path.join(audio_dir, "wav_chunks_predict")
@@ -104,12 +104,12 @@ def extract_speech_from_dir(audio_dir, rttm_dir, sad_name):
         os.mkdir(chunks_dir)
 
     for audio_file in audio_files:
-        rttm_filename = "{}_{}.rttm".format(sad_name, os.path.basename(wav)[:-4])
-        rttm_file = os.path.join(rttm_dir, sad_filename)
+        rttm_filename = "{}_{}.rttm".format(sad_name, os.path.basename(audio_file)[:-4])
+        rttm_file = os.path.join(rttm_dir, rttm_filename)
         if not os.path.isfile(rttm_file):
             sys.exit("The SAD file %s has not been found." % rttm_file)
 
-        wav_list.append(extract_speech(wav, rttm_file, sad_name, chunks_dir)[0])
+        wav_list.append(extract_speech(audio_file, rttm_file, chunks_dir)[0])
 
     wav_list = np.concatenate(wav_list)
 

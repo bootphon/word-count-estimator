@@ -98,7 +98,7 @@ class FeatureExtraction:
 
         try:
             with open(params_file) as f:
-                params = yaml.load(f)
+                params = yaml.safe_load(f)
         except IOError:
             print("Wrong parameters file.")
 
@@ -119,7 +119,7 @@ class FeatureExtraction:
 
         try:
             with open(params_file) as f:
-                params = yaml.load(f)
+                params = yaml.safe_load(f)
                 params = params['data_processing']
         except IOError:
             print("Wrong parameters file.")

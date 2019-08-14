@@ -45,7 +45,7 @@ class Batch():
 
         try:
             with open(params_file) as f:
-                params = yaml.load(f)[0]
+                params = yaml.safe_load(f)[0]
         except IOError:
             print("Wrong parameters file.")
 
@@ -66,7 +66,7 @@ class Batch():
 
         try:
             with open(params_file) as f:
-                params = yaml.load(f)
+                params = yaml.safe_load(f)
                 params = params['data_processing']
         except IOError:
             print("Wrong parameters file.")
