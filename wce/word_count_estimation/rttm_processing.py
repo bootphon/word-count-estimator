@@ -1,7 +1,8 @@
-"""Speech Extractor
+"""Rttm processing
 
-Module to extract segments of speech from the original wavs and gather the
-results of the WCE on the segments that come from the same file.
+Module to extract segments of speech from the original wavs by reading its 
+related .rttm file and gather the results of the WCE on the segments that come
+from the same audio.
 
 The module contains the following functions:
 
@@ -38,7 +39,7 @@ def extract_speech(audio_file, rttm_file, chunks_dir):
     offsets : 
         List of the offsets of the speech segments.
     """
-    
+     
     wav_list = []
     onsets = []
     offsets = []

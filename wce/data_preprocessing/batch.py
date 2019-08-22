@@ -1,4 +1,4 @@
-import os
+import sys
 import numpy as np
 import yaml
 
@@ -47,7 +47,7 @@ class Batch():
             with open(params_file) as f:
                 params = yaml.safe_load(f)[0]
         except IOError:
-            print("Wrong parameters file.")
+            sys.exit("Wrong parameters file.")
 
         params['data_prosessing']['batch'] = self.__dict__
 
@@ -69,7 +69,7 @@ class Batch():
                 params = yaml.safe_load(f)
                 params = params['data_processing']
         except IOError:
-            print("Wrong parameters file.")
+            sys.exit("Wrong parameters file.")
 
         for attr in params['batch']:
             setattr(self, attr, params['batch'][attr])

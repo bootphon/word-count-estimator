@@ -1,4 +1,4 @@
-import os, sys
+import sys
 import numpy as np
 from keras.models import Model, load_model
 from keras.layers import Input, Dense, LSTM, add
@@ -91,9 +91,9 @@ class EnvelopeEstimator:
         try:
             self.model = load_model(model_file)
         except IOError:
-            print("Path to envelope estimation model is wrong.")
+            sys.exit("Path to envelope estimation model is wrong.")
 
-    def train(self, X_train, y_train, model_file, itermediate_model_file):
+    def train(self, X_train, y_train, model_file, intermediate_model_file):
         """
         Trains the model given the input MFCCs frames and their respective
         targeted output syllable envelopes.
@@ -118,7 +118,7 @@ class EnvelopeEstimator:
             checkPoint = ModelCheckpoint(intermediate_model_file,
                                          monitor='val_loss')
         except IOError:
-            print("Invalid intermediate envelope estimator model path.")
+            sys.exit("Invalid intermediate envelope estimator model path.")
 
         self.model.fit(X_train, y_train, validation_data=(X_train, y_train),
                        shuffle=True, epochs=15000, batch_size=250,
@@ -128,7 +128,7 @@ class EnvelopeEstimator:
         try:
             self.model.save(model_file)
         except IOError:
-            print("Invalid envelope estimator model path.")
+            sys.exit("Invalid envelope estimator model path.")
 
     def predict(self, X):
         """

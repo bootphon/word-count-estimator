@@ -1,3 +1,4 @@
+import sys
 import yaml
 import pkg_resources
 import librosa
@@ -6,15 +7,13 @@ import numpy as np
 try:
     path_meme = "matrices/meme.npy"
     path_devi = "matrices/devi.npy"
-    module_name = 'wce.envelope_estimation.feature_extraction'
+    module_name = 'wce.data_preprocessing.feature_extraction'
     meme_f = pkg_resources.resource_stream(module_name, path_meme)
     devi_f = pkg_resources.resource_stream(module_name, path_devi)
     meme = np.load(meme_f)
     devi = np.load(devi_f)
-    meme = np.array(meme)
-    devi = np.array(devi)
 except:
-    print("Problem occuring with matrices files meme and devi.")
+    sys.exit("Problem occuring with matrices files meme and devi.")
 
 
 class FeatureExtraction:
@@ -43,6 +42,9 @@ class FeatureExtraction:
     coefs : int, optional
         Number of coefficients.
         Defaults to 24.
+    extractor : str, otpional
+        Extracting method.
+        Default to 'okko'.
     enhancement : bool, optional
         Use speech enhancement.
         Defaults to False.
@@ -62,16 +64,17 @@ class FeatureExtraction:
     rescale_mel_filter(mel_basis)
         Rescale mel filters so values in a band add up to 1. 
     mel_features_librosa(wav)
-        Determine the MFCCs of each signal using the librosa library.
+        Determine the log-mel energies of each signal using the librosa library.
     mel_features_okko(wav)
-        Determine the energy and MFCCs of each signal using Okko's method.
+        Determine the energy and log-mel energies of each signal using Okko's
+        method.
     generate_features(audio_file)
-        Generate the MFCC sequence of an audio file.
+        Generate the log-mel energies sequence of an audio file.
     """
 
     def __init__(self, sample_rate=16000, window_length=0.025,
                  window_step=0.01, fmin=0.0, fmax=None, n_mels=24,
-                 coefs=24, extractor='librosa', enhancement=False,
+                 coefs=24, extractor='okko', enhancement=False,
                  use_meme_devi=True, mel_rescale=True):
 
         self.sample_rate = sample_rate
@@ -100,7 +103,7 @@ class FeatureExtraction:
             with open(params_file) as f:
                 params = yaml.safe_load(f)
         except IOError:
-            print("Wrong parameters file.")
+            sys.exit("Wrong parameters file.")
 
         params['data_processing']['feature_extraction'] = self.__dict__
 
@@ -122,7 +125,7 @@ class FeatureExtraction:
                 params = yaml.safe_load(f)
                 params = params['data_processing']
         except IOError:
-            print("Wrong parameters file.")
+            sys.exit("Wrong parameters file.")
 
         for attr in params['feature_extraction']:
             setattr(self, attr, params['feature_extraction'][attr])
@@ -155,7 +158,7 @@ class FeatureExtraction:
 
     def mel_features_librosa(self, wav):
         """
-        Determine the MFCCs of each signal using the librosa library.
+        Determine the log-mel energies of each signal using the librosa library.
 
         Parameters
         ----------
@@ -165,7 +168,7 @@ class FeatureExtraction:
         Returns
         -------
         features : ndarray
-            2D, MFCCs matrix.
+            2D, log-mel energies matrix.
         """
 
         n_fft = int(self.window_length * self.sample_rate)
@@ -189,11 +192,8 @@ class FeatureExtraction:
 
     def mel_features_okko(self, wav):
         """
-        Determine the energy and MFCCs of each signal using the method in
-        the original repo.
-
-        Remark: in the original code, the energy is computed but never used. Here
-        it is also computed as it might be used as additional features.
+        Determine the energy and log-mel energies of each signal using the
+        method in the original repo.
 
         Parameters
         ----------
@@ -202,8 +202,8 @@ class FeatureExtraction:
 
         Returns
         -------
-        total_mfccs : ndarray
-            2D, MFCCs matrix.
+        total_mel_energies : ndarray
+            2D, log-mel energies matrix.
         """
 
         wav_len = len(wav)
@@ -223,20 +223,22 @@ class FeatureExtraction:
 
         # slide window over wav and compute energy and MFFCs at each step
         n_windows = wav_len // hop_length + 1
-        total_mfccs = np.zeros((n_windows, mel_basis.shape[0]))
+        total_mel_energies = np.zeros((n_windows, mel_basis.shape[0]))
         total_energy = np.zeros(n_windows)
 
         j = 0
         for i_start in range(0, wav_len, hop_length):
             window = wav[i_start:i_start+n_fft] * window_hamming
             fft_magnitude = np.abs(np.fft.rfft(window))
-            mfccs = 20 * np.log10(np.matmul(mel_basis, fft_magnitude))
+            mel_energies = 20 * np.log10(np.matmul(mel_basis, fft_magnitude))
 
-            total_mfccs[j, :] = mfccs
+            total_mel_energies[j, :] = mel_energies
             total_energy[j] = sum(fft_magnitude)
             j += 1
+        
+        total_mel_energies = total_mel_energies[:, :self.coefs]
 
-        return total_mfccs
+        return total_mel_energies
 
     def generate_features(self, audio_file):
         """

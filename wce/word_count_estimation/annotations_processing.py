@@ -20,7 +20,7 @@ import subprocess
 import numpy as np
 import pympi as pmp
 
-from .speech_extractor import extract_speech
+from .rttm_processing import extract_speech
 
 
 def eaf2txt(eaf_file, output_folder):
@@ -52,7 +52,6 @@ def eaf2txt(eaf_file, output_folder):
                 annotations = EAF.get_annotation_data_for_tier(tier)
 
             for annotation in annotations:
-                parameters = EAF.get_parameters_for_tier(tier)
                 onset, offset, transcript = annotation[0], annotation[1], annotation[2]
 
                 speaker = tier
@@ -132,9 +131,6 @@ def count_annotations_words(enrich_file, rttm_file, audio_file, chunks_dir):
         List of the .wav files corresponding to the SAD segments (same order
         as the 2 previous arrays).
     """
-
-    curr_file = audio_file[:-4]
-    filename = os.path.basename(curr_file)
 
     # Read enriched file first to get original annotated utterances and their
     # information

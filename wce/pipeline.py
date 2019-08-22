@@ -11,12 +11,12 @@ import csv
 import shutil
 from tqdm import tqdm
 
-from .envelope_estimation.feature_extraction import FeatureExtraction
-from .envelope_estimation.batch import Batch
+from .data_preprocessing.feature_extraction import FeatureExtraction
+from .data_preprocessing.batch import Batch
 from .envelope_estimation.envelope_estimator import EnvelopeEstimator
 from .word_count_estimation.annotations_processing import process_annotations
-from .word_count_estimation.speech_extractor import extract_speech_from_dir, \
-                                                    retrieve_files_word_counts
+from .word_count_estimation.rttm_processing import extract_speech_from_dir, \
+                                                   retrieve_files_word_counts
 from .word_count_estimation.word_count_estimator import WordCountEstimator
 
 
@@ -206,4 +206,4 @@ def predict(audio_dir, results_path, data_processing_config, env_model_path,
     print(" - Envelope estimator: {}".format(os.path.basename(env_model_path)))
     print(" - Wordcount estimator: {}".format(os.path.basename(wce_model_path)))
     print("Results saved at: {}".format(results_path))
-
+    

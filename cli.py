@@ -12,7 +12,7 @@ optional arguments:
   -h, --help       show this help message and exit
 """
 
-import os
+import os,sys
 import argparse
 import logging
 from dotenv import load_dotenv

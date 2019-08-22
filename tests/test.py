@@ -3,14 +3,10 @@ from math import sqrt
 import pytest
 import numpy as np
 from dotenv import load_dotenv
-import matplotlib.pyplot as plt
 
-
-from wce.envelope_estimation.feature_extraction import FeatureExtraction
-from wce.envelope_estimation.batch import Batch
+from wce.data_preprocessing.feature_extraction import FeatureExtraction
+from wce.data_preprocessing.batch import Batch
 from wce.envelope_estimation.envelope_estimator import EnvelopeEstimator
-from wce.word_count_estimation.speech_extractor import extract_speech_from_dir,\
-                                                       retrieve_files_word_counts
 from wce.word_count_estimation.word_count_estimator import WordCountEstimator
 
 
@@ -50,6 +46,7 @@ def get_envelopes():
 def test_untrained_predict(get_envelopes):
 
     wce = WordCountEstimator()
+    wce.summary()
     wce.load_model(default_wce_path)
     X, target_counts = get_envelopes
     y = np.array(wce.predict(X))
@@ -58,9 +55,9 @@ def test_untrained_predict(get_envelopes):
     b = target_counts[np.where(target_counts > 0)]
     RMSE = sqrt(np.square(np.mean(((a-b) / b))))*100
     print("RMSE :", RMSE)
-    print(RMSE)
+    print("y", y)
 
-    RMSE < 10
+    assert RMSE < 10
 
 
 def test_train_and_predict(get_envelopes):
@@ -73,7 +70,6 @@ def test_train_and_predict(get_envelopes):
     wce.train(X_train, y_train, model_file=test_wce_path)
     wce.load_model(test_wce_path)
     y_pred = wce.predict(X_test)
-    print(y_pred, y_test)
 
     a = y_pred[np.where(y_test > 0)]
     b = y_test[np.where(y_test > 0)]

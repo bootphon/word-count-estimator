@@ -1,6 +1,5 @@
-import os, sys
+import sys
 import pickle
-from math import sqrt
 from statsmodels.api import OLS, add_constant
 import numpy as np
 
@@ -80,8 +79,11 @@ class WordCountEstimator:
         model_file : str
             Path to the model's file.
         """
-
-        pickle.dump(self.__dict__, open(model_file, 'wb'))
+        
+        try:
+            pickle.dump(self.__dict__, open(model_file, 'wb'))
+        except:
+            sys.exit("Error with WCE model file.")
 
     def load_model(self, model_file):
         """
@@ -92,8 +94,11 @@ class WordCountEstimator:
         model_file : str
             Path to the model's file.
         """
+        try:
+            model = pickle.load(open(model_file, 'rb'))
+        except:
+            sys.exit("Error with WCE model file.")
 
-        model = pickle.load(open(model_file, 'rb'))
         for attr in model:
             setattr(self, attr, model[attr])
 
