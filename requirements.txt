@@ -5,4 +5,4 @@ pympi_ling==1.69
 statsmodels==0.10.1
 Keras==2.2.4
 python-dotenv==0.10.3
-tensorflow==1.14.0
+tensorflow==2.5.0
